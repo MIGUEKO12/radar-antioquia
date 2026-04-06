@@ -21,6 +21,7 @@ const { limpiarAntiguos,
 // ================= SECCIÓN: INSTANCIA EXPRESS =================
 const app  = express();
 const PORT = parseInt(process.env.PORT) || 3000;
+app.set('trust proxy', 1);
 
 // ================= SECCIÓN: MIDDLEWARES =================
 app.use(headersSeguridad);
