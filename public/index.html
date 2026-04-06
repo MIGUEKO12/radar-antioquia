@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Radar de Noticias — Antioquia</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-inner">
+    <div class="header-marca">
+      <div class="header-logo">RA</div>
+      <div>
+        <h1 class="header-titulo">Radar de Noticias</h1>
+        <p class="header-sub">Gobernación de Antioquia — Monitoreo territorial</p>
+      </div>
+    </div>
+    <div class="header-meta">
+      <span id="fecha-actual"></span>
+      <span class="dot-sep">·</span>
+      <span id="ultima-actualizacion">Cargando...</span>
+    </div>
+  </div>
+</header>
+
+<!-- BARRA -->
+<section class="barra-busqueda">
+  <div class="barra-inner">
+    <div class="modo-toggle">
+      <button class="modo-btn activo" id="btn-antioquia" onclick="setModo('antioquia')">Antioquia</button>
+      <button class="modo-btn"        id="btn-libre"     onclick="setModo('libre')">Búsqueda libre</button>
+    </div>
+    <div id="buscador-antioquia" class="buscador-inline">
+      <input type="text" id="q-antioquia" placeholder="Buscar en Antioquia: ELN, minería, inundación..." maxlength="100">
+      <button onclick="buscarEnAntioquia()">Buscar</button>
+    </div>
+    <div id="buscador-libre" class="buscador-inline oculto">
+      <input type="text" id="q-libre" placeholder="Buscar cualquier noticia..." maxlength="100">
+      <button onclick="ejecutarBusquedaLibre()">Buscar</button>
+    </div>
+    <div class="fechas-wrap">
+      <div class="fecha-grupo"><label class="fecha-label">Desde</label><input type="date" id="fecha-desde" class="input-fecha" onchange="onFechaChange()"></div>
+      <div class="fecha-grupo"><label class="fecha-label">Hasta</label><input type="date" id="fecha-hasta" class="input-fecha" onchange="onFechaChange()"></div>
+    </div>
+    <div class="periodo-pills" id="periodo-pills">
+      <button class="pill activo" onclick="setPeriodo('hoy',this)">Hoy</button>
+      <button class="pill"        onclick="setPeriodo('semana',this)">Semana</button>
+      <button class="pill"        onclick="setPeriodo('mes',this)">Mes</button>
+    </div>
+  </div>
+</section>
+
+<!-- MÉTRICAS — 7 tarjetas: General + las 6 principales -->
+<section class="metricas-section">
+  <div class="metricas-grid" id="metricas-grid">
+    <div class="metrica-card"        onclick="filtrarPorCategoria('todas')">
+      <span class="metrica-label">Total noticias</span>
+      <span class="metrica-val" id="m-total">—</span>
+    </div>
+    <div class="metrica-card gris"   onclick="filtrarPorCategoria('general')">
+      <span class="metrica-label">General</span>
+      <span class="metrica-val" id="m-gen">—</span>
+    </div>
+    <div class="metrica-card rojo"   onclick="filtrarPorCategoria('orden_publico')">
+      <span class="metrica-label">Orden público</span>
+      <span class="metrica-val" id="m-op">—</span>
+      <span class="metrica-hint">Clic para filtrar</span>
+    </div>
+    <div class="metrica-card rojo-oscuro" onclick="filtrarPorCategoria('homicidio')">
+      <span class="metrica-label">Homicidios</span>
+      <span class="metrica-val" id="m-hom">—</span>
+    </div>
+    <div class="metrica-card rosa"   onclick="filtrarPorCategoria('feminicidio')">
+      <span class="metrica-label">Feminicidios</span>
+      <span class="metrica-val" id="m-fem">—</span>
+    </div>
+    <div class="metrica-card amber"  onclick="filtrarPorCategoria('mineria')">
+      <span class="metrica-label">Minería</span>
+      <span class="metrica-val" id="m-min">—</span>
+    </div>
+    <div class="metrica-card azul"   onclick="filtrarPorCategoria('clima')">
+      <span class="metrica-label">Clima</span>
+      <span class="metrica-val" id="m-cli">—</span>
+    </div>
+  </div>
+</section>
+
+<!-- MODO ANTIOQUIA -->
+<div id="seccion-mapa">
+  <main class="main-layout">
+    <section class="col-mapa">
+      <div class="breadcrumb" id="breadcrumb"><span class="bc-item activo">Antioquia</span></div>
+      <div id="aviso-ubicacion" style="display:none;font-size:12px;color:#e65100;background:#fff3e0;padding:8px 14px;border-radius:8px;border:1px solid #ffcc02;margin-bottom:8px;align-items:center;gap:8px;"></div>
+      <div id="mapa" class="mapa-container"></div>
+      <div class="leyenda-mapa">
+        <span class="leyenda-item"><span class="dot" style="background:#c62828"></span> Homicidio</span>
+        <span class="leyenda-item"><span class="dot" style="background:#e53935"></span> Orden público</span>
+        <span class="leyenda-item"><span class="dot" style="background:#e65100"></span> Minería</span>
+        <span class="leyenda-item"><span class="dot" style="background:#1565c0"></span> Clima</span>
+        <span class="leyenda-item"><span class="dot" style="background:#546e7a"></span> Sin ubicar</span>
+      </div>
+    </section>
+
+    <aside class="col-panel">
+      <!-- Clasificación con tooltip en Orden público -->
+      <div class="panel-card" style="position:relative">
+        <h3 class="panel-titulo" id="clasificacion-titulo">Clasificación de noticias</h3>
+        <div id="clasificacion-lista"></div>
+
+        <!-- Tooltip subcategorías orden público -->
+        <div class="tooltip-subcat" id="tooltip-op">
+          <h4>Orden público incluye:</h4>
+          Amenaza · Asonada · Combate<br>
+          Confinamiento · Desplazamiento forzado<br>
+          Enfrentamiento · Manifestación pública<br>
+          Artefacto explosivo · Proselitismo ilegal<br>
+          Reclutamiento de menores · Secuestro<br>
+          Terrorismo · Amenaza líderes sociales<br>
+          Captura de cabecillas · Neutralización<br>
+          Extinción de dominio · Lavado de activos
+        </div>
+      </div>
+
+      <!-- Panel noticias recientes con filtros y flechas -->
+      <div class="panel-card flex-grow">
+        <h3 class="panel-titulo" id="noticias-titulo">Noticias recientes</h3>
+
+        <!-- Filtros de categoría -->
+        <div class="noticias-filtros" id="noticias-filtros">
+          <button class="filtro-cat-btn activo" onclick="filtrarNoticiasPanel('todas',this)">Todas</button>
+          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('orden_publico',this)">Orden público</button>
+          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('homicidio',this)">Homicidio</button>
+          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('feminicidio',this)">Feminicidio</button>
+          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('mineria',this)">Minería</button>
+          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('clima',this)">Clima</button>
+          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('general',this)">General</button>
+        </div>
+
+        <!-- Flechas de navegación -->
+        <div class="noticias-nav">
+          <span class="noticias-nav-info" id="not-nav-info">— de —</span>
+          <div class="noticias-nav-btns">
+            <button class="nav-not-btn" id="btn-not-ant" onclick="navegarNoticias(-1)" title="Anteriores">&#8593;</button>
+            <button class="nav-not-btn" id="btn-not-sig" onclick="navegarNoticias(1)"  title="Siguientes">&#8595;</button>
+          </div>
+        </div>
+
+        <div id="noticias-lista" class="noticias-scroll"></div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<!-- GRÁFICOS -->
+<section class="graficos-section" id="seccion-graficos">
+  <div class="graficos-grid">
+    <div class="grafico-card">
+      <div class="grafico-header">
+        <h3 class="grafico-titulo">Tendencia de noticias</h3>
+        <div class="periodo-pills small">
+          <button class="pill activo" onclick="setTendencia(7,this)">7d</button>
+          <button class="pill"        onclick="setTendencia(15,this)">15d</button>
+          <button class="pill"        onclick="setTendencia(30,this)">30d</button>
+        </div>
+      </div>
+      <canvas id="chart-tendencia" height="110"></canvas>
+    </div>
+    <div class="grafico-card">
+      <h3 class="grafico-titulo">Impacto mediático — clic para ver noticias</h3>
+      <canvas id="chart-impacto" height="140"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- MODO BÚSQUEDA LIBRE -->
+<section id="seccion-libre" class="oculto">
+  <div class="libre-wrap">
+    <div class="libre-header">
+      <span id="libre-resumen" class="libre-resumen"></span>
+      <div id="libre-paginacion"></div>
+    </div>
+    <div id="libre-lista" class="libre-lista">
+      <p style="color:#9e9e9e;font-size:13px;padding:20px 0;text-align:center">Ingresa un término y presiona Buscar.</p>
+    </div>
+  </div>
+</section>
+
+<!-- MODAL SIN UBICAR -->
+<div id="modal-sin-ubicar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:white;border-radius:16px;width:100%;max-width:720px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="padding:20px 24px;border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center;background:#f8f9fa;">
+      <div>
+        <h2 style="font-size:16px;font-weight:600;color:#1f2937;margin:0">Noticias sin municipio detectado</h2>
+        <p id="modal-sin-ubicar-count" style="font-size:13px;color:#6b7280;margin:4px 0 0"></p>
+      </div>
+      <button onclick="cerrarModal()" style="width:32px;height:32px;border-radius:50%;border:none;background:#e5e7eb;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#374151;font-weight:600;">&#x2715;</button>
+    </div>
+    <div style="padding:12px 24px;background:#fff8e1;border-bottom:1px solid #ffe082;">
+      <p style="font-size:12px;color:#e65100;margin:0">Estas noticias contienen el término buscado pero no mencionan un municipio específico de Antioquia.</p>
+    </div>
+    <div id="modal-sin-ubicar-lista" style="overflow-y:auto;flex:1;padding:16px 24px;"></div>
+  </div>
+</div>
+
+<!-- MODAL CATEGORÍA -->
+<div id="modal-categoria" onclick="cerrarModalCategoria(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);">
+  <div class="modal-cat-box">
+    <div class="modal-cat-header">
+      <div class="modal-cat-header-izq">
+        <div class="modal-cat-color-dot" id="modal-cat-dot"></div>
+        <div>
+          <h2 class="modal-cat-titulo" id="modal-cat-titulo">Categoría</h2>
+          <p class="modal-cat-subtitulo" id="modal-cat-subtitulo"></p>
+        </div>
+      </div>
+      <button class="modal-cat-cerrar" onclick="cerrarModalCategoria()">&#x2715;</button>
+    </div>
+    <div class="modal-cat-search">
+      <input type="text" id="modal-cat-buscador" placeholder="Filtrar noticias por título..." oninput="filtrarModalNoticias(this.value)">
+    </div>
+    <div class="modal-cat-nav">
+      <span class="modal-cat-nav-info" id="modal-cat-nav-info">0 de 0</span>
+      <div class="modal-cat-nav-btns">
+        <button class="nav-btn" id="btn-primera"   onclick="irNoticia(0)">&#9198; Primera</button>
+        <button class="nav-btn" id="btn-anterior"  onclick="irNoticia(modalState.actual-1)">&#8592; Ant</button>
+        <button class="nav-btn" id="btn-siguiente" onclick="irNoticia(modalState.actual+1)">Sig &#8594;</button>
+        <button class="nav-btn" id="btn-ultima"    onclick="irNoticia(modalState.filtradas.length-1)">&#9197; Última</button>
+        <button class="nav-btn primario" id="btn-abrir-actual" onclick="abrirNoticiaActual()">Abrir &#8599;</button>
+      </div>
+    </div>
+    <div class="modal-cat-lista" id="modal-cat-lista"></div>
+    <div id="modal-paginacion" style="display:flex;gap:4px;flex-wrap:wrap;padding:10px 24px;border-top:1px solid #f0f0f0;justify-content:center;"></div>
+    <div class="modal-cat-footer">
+      <span class="modal-cat-footer-texto">← → teclado para navegar · Enter para abrir · Esc para cerrar</span>
+      <button class="nav-btn" onclick="cerrarModalCategoria()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPINNER -->
+<div id="spinner" class="spinner-overlay oculto"><div class="spinner"></div></div>
+
+<script src="js/mapa.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

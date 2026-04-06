@@ -1,0 +1,124 @@
+// ================= SECCIÓN: DEPENDENCIAS =================
+const { db }  = require('../config/database'); // Instancia sql.js
+const crypto  = require('crypto');             // Para hash de deduplicación
+
+// ================= SECCIÓN: HASH =================
+function generarHash(titulo) {
+  return crypto.createHash('md5').update(titulo.trim().toLowerCase()).digest('hex');
+}
+
+// ================= SECCIÓN: INSERCIÓN =================
+function insertarNoticia({ titulo, link, fecha, subregion, municipio, categoria, modo, query }) {
+  const hash = generarHash(titulo);
+
+  // Verificamos si el hash ya existe (deduplicación manual — sql.js no tiene INSERT OR IGNORE directo)
+  const existe = db.get('SELECT id FROM noticias WHERE hash = ?', [hash]);
+  if (existe) return false; // Ya existe, no insertamos
+
+  const result = db.run(
+    `INSERT INTO noticias (titulo, link, fecha, subregion, municipio, categoria, modo, query, hash)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      titulo,
+      link,
+      fecha,
+      subregion  || 'general',
+      municipio  || null,
+      categoria  || 'general',
+      modo       || 'antioquia',
+      query      || null,
+      hash
+    ]
+  );
+
+  return result.changes > 0;
+}
+
+// ================= SECCIÓN: CONSULTA PRINCIPAL =================
+function obtenerNoticias({ desde, hasta, subregion, municipio, modo, limite = 500 }) {
+  let sql    = 'SELECT * FROM noticias WHERE 1=1';
+  const args = [];
+
+  if (desde)  { sql += ' AND fecha >= ?'; args.push(desde + 'T00:00:00'); }
+  if (hasta)  { sql += ' AND fecha <= ?'; args.push(hasta + 'T23:59:59'); }
+  if (subregion && subregion !== 'todas') { sql += ' AND subregion = ?'; args.push(subregion); }
+  if (municipio)  { sql += ' AND municipio = ?'; args.push(municipio); }
+  if (modo)       { sql += ' AND modo = ?';      args.push(modo); }
+
+  sql += ' ORDER BY fecha DESC LIMIT ?';
+  args.push(limite);
+
+  return db.all(sql, args);
+}
+
+// ================= SECCIÓN: CONTEOS =================
+function contarPorCategoria({ desde, hasta, modo }) {
+  let sql    = 'SELECT categoria, COUNT(*) as total FROM noticias WHERE 1=1';
+  const args = [];
+
+  if (desde) { sql += ' AND fecha >= ?'; args.push(desde + 'T00:00:00'); }
+  if (hasta) { sql += ' AND fecha <= ?'; args.push(hasta + 'T23:59:59'); }
+  if (modo)  { sql += ' AND modo = ?';   args.push(modo); }
+
+  sql += ' GROUP BY categoria ORDER BY total DESC';
+  return db.all(sql, args);
+}
+
+function contarPorSubregion({ desde, hasta }) {
+  return db.all(
+    `SELECT subregion, COUNT(*) as total FROM noticias
+     WHERE fecha >= ? AND fecha <= ? AND modo = 'antioquia'
+     GROUP BY subregion ORDER BY total DESC`,
+    [desde + 'T00:00:00', hasta + 'T23:59:59']
+  );
+}
+
+function contarPorMunicipio({ subregion, desde, hasta }) {
+  return db.all(
+    `SELECT municipio, COUNT(*) as total FROM noticias
+     WHERE subregion = ? AND fecha >= ? AND fecha <= ? AND municipio IS NOT NULL
+     GROUP BY municipio ORDER BY total DESC`,
+    [subregion, desde + 'T00:00:00', hasta + 'T23:59:59']
+  );
+}
+
+function tendenciaPorDia({ dias = 7, modo }) {
+  return db.all(
+    `SELECT DATE(fecha) as dia, COUNT(*) as total FROM noticias
+     WHERE fecha >= DATE('now', '-${parseInt(dias)} days') AND modo = ?
+     GROUP BY DATE(fecha) ORDER BY dia ASC`,
+    [modo || 'antioquia']
+  );
+}
+
+// ================= SECCIÓN: MANTENIMIENTO =================
+function limpiarAntiguos() {
+  const dias   = parseInt(process.env.DIAS_RETENCION) || 90;
+  const result = db.run(`DELETE FROM noticias WHERE fecha < DATE('now', '-${dias} days')`);
+  return result.changes;
+}
+
+function vacuumDB() {
+  try { db.exec('VACUUM'); } catch(e) { /* sql.js puede no soportar VACUUM en todos los modos */ }
+}
+
+function estadisticasDB() {
+  return {
+    total:  (db.get('SELECT COUNT(*) as n FROM noticias') || {}).n || 0,
+    hoy:    (db.get("SELECT COUNT(*) as n FROM noticias WHERE DATE(fecha) = DATE('now')") || {}).n || 0,
+    semana: (db.get("SELECT COUNT(*) as n FROM noticias WHERE fecha >= DATE('now','-7 days')") || {}).n || 0
+  };
+}
+
+// ================= SECCIÓN: EXPORTACIONES =================
+module.exports = {
+  insertarNoticia,
+  obtenerNoticias,
+  contarPorCategoria,
+  contarPorSubregion,
+  contarPorMunicipio,
+  tendenciaPorDia,
+  limpiarAntiguos,
+  vacuumDB,
+  estadisticasDB
+};
