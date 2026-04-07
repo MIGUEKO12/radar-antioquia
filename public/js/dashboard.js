@@ -55,8 +55,9 @@ function mostrarTooltipOP(el) {
   const tt = $('tooltip-op');
   if (!tt) return;
   const rect = el.getBoundingClientRect();
+  // Posicionamos con fixed relativo a la ventana
   tt.style.top  = (rect.bottom + 8) + 'px';
-  tt.style.left = rect.left + 'px';
+  tt.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
   tt.classList.add('visible');
 }
 
@@ -366,7 +367,7 @@ function actualizarClasificacion(categorias, totalGeneral, contexto = null) {
       const total = catMap[c.key] || 0;
       const pct   = Math.round((total / maxTotal) * 100);
       const info  = c.infoBtn
-        ? `<button class="btn-info-cat" onmouseenter="mostrarTooltipOP(this)" onmouseleave="ocultarTooltipOP()" onclick="event.stopPropagation()">i</button>`
+        ? `<button class="btn-info-cat" onclick="event.stopPropagation();abrirModalSubcategorias()">i</button>`
         : '';
       return `<div class="clas-row">
         <span class="clas-nombre">${c.nombre}${info}</span>
@@ -484,6 +485,7 @@ function setModo(modo) {
   const esAntioquia = modo === 'antioquia';
   $('seccion-mapa').classList.toggle('oculto',       !esAntioquia);
   $('seccion-graficos').classList.toggle('oculto',   !esAntioquia);
+  $('metricas-section').classList.toggle('oculto',   !esAntioquia);
   $('buscador-antioquia').classList.toggle('oculto', !esAntioquia);
   $('buscador-libre').classList.toggle('oculto',      esAntioquia);
   $('seccion-libre').classList.toggle('oculto',       esAntioquia);
@@ -762,6 +764,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const qLibre=$('q-libre');
   if (qLibre) qLibre.addEventListener('keypress', e=>{ if(e.key==='Enter') ejecutarBusquedaLibre(); });
 });
+
+
+// ================= SECCIÓN: MODAL SUBCATEGORÍAS ORDEN PÚBLICO =================
+function abrirModalSubcategorias() {
+  const modal = $('modal-subcategorias');
+  if (modal) modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarModalSubcategorias() {
+  const modal = $('modal-subcategorias');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('click', e => {
+  if (e.target === $('modal-subcategorias')) cerrarModalSubcategorias();
+});
+
+window.abrirModalSubcategorias  = abrirModalSubcategorias;
+window.cerrarModalSubcategorias = cerrarModalSubcategorias;
 
 // ================= SECCIÓN: EXPOSICIÓN GLOBAL =================
 window.setModo               = setModo;

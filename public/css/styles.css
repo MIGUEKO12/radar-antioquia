@@ -252,7 +252,7 @@ button { cursor:pointer; font-family:inherit; }
 
 /* ================= SECCIÓN: TOOLTIP SUBCATEGORÍAS ================= */
 .tooltip-subcat {
-  display:none;position:absolute;z-index:999;
+  display:none;position:fixed;z-index:9999;
   background:#1f2937;color:white;
   border-radius:10px;padding:12px 14px;
   font-size:11px;line-height:1.8;
