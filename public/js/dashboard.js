@@ -126,6 +126,12 @@ function filtrarPorCategoria(cat) {
     b.classList.toggle('activo', b.getAttribute('onclick').includes(`'${cat}'`));
   });
 
+  // Sincronizamos los botones de filtro del panel
+  document.querySelectorAll('.filtro-cat-btn').forEach(b => {
+    const onc = b.getAttribute('onclick') || '';
+    b.classList.toggle('activo', onc.includes(`'${cat}'`));
+  });
+
   renderNoticiasPanel();
 }
 
@@ -151,9 +157,16 @@ function resetFiltrosBotones() {
 function renderNoticiasPanel() {
   // Filtramos según categoría activa
   const fuente = Estado.todasNoticiasPanel;
-  Estado.noticiasPanel = Estado.filtroCatPanel === 'todas'
-    ? fuente
-    : fuente.filter(n => n.categoria === Estado.filtroCatPanel);
+  // orden_publico incluye también desplazamiento (igual que en las métricas)
+  if (Estado.filtroCatPanel === 'todas') {
+    Estado.noticiasPanel = fuente;
+  } else if (Estado.filtroCatPanel === 'orden_publico') {
+    Estado.noticiasPanel = fuente.filter(n =>
+      n.categoria === 'orden_publico' || n.categoria === 'desplazamiento'
+    );
+  } else {
+    Estado.noticiasPanel = fuente.filter(n => n.categoria === Estado.filtroCatPanel);
+  }
 
   const total   = Estado.noticiasPanel.length;
   const inicio  = Estado.paginaPanel * ITEMS_PANEL;

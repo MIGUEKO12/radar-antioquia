@@ -45,7 +45,7 @@ async function getDashboard(req, res) {
       NoticiaModel.contarPorCategoria({ desde, hasta, modo:'antioquia' }),
       NoticiaModel.contarPorSubregion({ desde, hasta }),
       NoticiaModel.tendenciaPorDia({ dias: periodo==='mes'?30:periodo==='semana'?7:1, modo:'antioquia' }),
-      NoticiaModel.obtenerNoticias({ desde, hasta, modo:'antioquia', limite:30 })
+      NoticiaModel.obtenerNoticias({ desde, hasta, modo:'antioquia', limite:2000 }) // Todas para paginar en frontend
     ]);
 
     const total = porCategoria.reduce((acc,c) => acc+c.total, 0);

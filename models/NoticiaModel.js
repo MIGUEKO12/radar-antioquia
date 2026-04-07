@@ -39,8 +39,8 @@ function obtenerNoticias({ desde, hasta, subregion, municipio, modo, limite = 50
   let sql    = 'SELECT * FROM noticias WHERE 1=1';
   const args = [];
 
-  if (desde)  { sql += ' AND DATE(fecha) >= ?'; args.push(desde); }
-  if (hasta)  { sql += ' AND DATE(fecha) <= ?'; args.push(hasta); }
+  if (desde)  { sql += ' AND fecha >= ?'; args.push(desde + 'T00:00:00'); }
+  if (hasta)  { sql += ' AND fecha <= ?'; args.push(hasta + 'T23:59:59'); }
   if (subregion && subregion !== 'todas') { sql += ' AND subregion = ?'; args.push(subregion); }
   if (municipio)  { sql += ' AND municipio = ?'; args.push(municipio); }
   if (modo)       { sql += ' AND modo = ?';      args.push(modo); }
@@ -56,9 +56,9 @@ function contarPorCategoria({ desde, hasta, modo }) {
   let sql    = 'SELECT categoria, COUNT(*) as total FROM noticias WHERE 1=1';
   const args = [];
 
-  if (desde) { sql += ' AND DATE(fecha) >= ?'; args.push(desde); }
-  if (hasta) { sql += ' AND DATE(fecha) <= ?'; args.push(hasta); }
-  if (modo)  { sql += ' AND modo = ?';         args.push(modo); }
+  if (desde) { sql += ' AND fecha >= ?'; args.push(desde + 'T00:00:00'); }
+  if (hasta) { sql += ' AND fecha <= ?'; args.push(hasta + 'T23:59:59'); }
+  if (modo)  { sql += ' AND modo = ?';   args.push(modo); }
 
   sql += ' GROUP BY categoria ORDER BY total DESC';
   return db.all(sql, args);
@@ -67,18 +67,18 @@ function contarPorCategoria({ desde, hasta, modo }) {
 function contarPorSubregion({ desde, hasta }) {
   return db.all(
     `SELECT subregion, COUNT(*) as total FROM noticias
-     WHERE DATE(fecha) >= ? AND DATE(fecha) <= ? AND modo = 'antioquia'
+     WHERE fecha >= ? AND fecha <= ? AND modo = 'antioquia'
      GROUP BY subregion ORDER BY total DESC`,
-    [desde, hasta]
+    [desde + 'T00:00:00', hasta + 'T23:59:59']
   );
 }
 
 function contarPorMunicipio({ subregion, desde, hasta }) {
   return db.all(
     `SELECT municipio, COUNT(*) as total FROM noticias
-     WHERE subregion = ? AND DATE(fecha) >= ? AND DATE(fecha) <= ? AND municipio IS NOT NULL
+     WHERE subregion = ? AND fecha >= ? AND fecha <= ? AND municipio IS NOT NULL
      GROUP BY municipio ORDER BY total DESC`,
-    [subregion, desde, hasta]
+    [subregion, desde + 'T00:00:00', hasta + 'T23:59:59']
   );
 }
 
