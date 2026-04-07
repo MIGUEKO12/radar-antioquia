@@ -4,17 +4,34 @@ const { buscarLibre, recolectarAntioquia } = require('../../services/recolector'
 
 // ================= SECCIÓN: HELPER PERÍODO =================
 function resolverPeriodo(query) {
-  const hoy   = new Date();
-  const hasta = query.hasta || hoy.toISOString().split('T')[0];
+  // Colombia es UTC-5 — calculamos la fecha local correcta
+  const ahora    = new Date();
+  const offsetCO = -5 * 60; // minutos de diferencia con UTC
+  const localCO  = new Date(ahora.getTime() + (offsetCO - ahora.getTimezoneOffset()) * 60000);
+  const hoyStr   = localCO.toISOString().split('T')[0]; // YYYY-MM-DD en hora Colombia
+
+  const hasta = query.hasta || hoyStr;
   let desde   = query.desde;
 
   if (!desde) {
     switch (query.periodo) {
-      case 'semana': { const s=new Date(hoy); s.setDate(s.getDate()-7); desde=s.toISOString().split('T')[0]; break; }
-      case 'mes':    { const m=new Date(hoy); m.setDate(m.getDate()-30); desde=m.toISOString().split('T')[0]; break; }
-      default:        desde = hasta; // 'hoy'
+      case 'semana': {
+        const s = new Date(localCO);
+        s.setDate(s.getDate() - 7);
+        desde = s.toISOString().split('T')[0];
+        break;
+      }
+      case 'mes': {
+        const m = new Date(localCO);
+        m.setDate(m.getDate() - 30);
+        desde = m.toISOString().split('T')[0];
+        break;
+      }
+      default:
+        desde = hoyStr; // 'hoy' — mismo día en hora Colombia
     }
   }
+  console.log(`[Período] periodo="${query.periodo}" desde="${desde}" hasta="${hasta}"`);
   return { desde, hasta };
 }
 
