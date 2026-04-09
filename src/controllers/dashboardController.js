@@ -4,11 +4,11 @@ const { buscarLibre, recolectarAntioquia } = require('../../services/recolector'
 
 // ================= SECCIÓN: HELPER PERÍODO =================
 function resolverPeriodo(query) {
-  // Colombia es UTC-5 — calculamos la fecha local correcta
-  const ahora    = new Date();
-  const offsetCO = -5 * 60; // minutos de diferencia con UTC
-  const localCO  = new Date(ahora.getTime() + (offsetCO - ahora.getTimezoneOffset()) * 60000);
-  const hoyStr   = localCO.toISOString().split('T')[0]; // YYYY-MM-DD en hora Colombia
+  // Las fechas en DB ya están en hora Colombia, usamos fecha local del servidor
+  const ahora  = new Date();
+  // Restamos 5 horas para obtener hora Colombia
+  const co     = new Date(ahora.getTime() - (5 * 60 * 60 * 1000));
+  const hoyStr = co.toISOString().split('T')[0];
 
   const hasta = query.hasta || hoyStr;
   let desde   = query.desde;
@@ -16,25 +16,24 @@ function resolverPeriodo(query) {
   if (!desde) {
     switch (query.periodo) {
       case 'semana': {
-        const s = new Date(localCO);
+        const s = new Date(co);
         s.setDate(s.getDate() - 7);
         desde = s.toISOString().split('T')[0];
         break;
       }
       case 'mes': {
-        const m = new Date(localCO);
+        const m = new Date(co);
         m.setDate(m.getDate() - 30);
         desde = m.toISOString().split('T')[0];
         break;
       }
       default:
-        desde = hoyStr; // 'hoy' — mismo día en hora Colombia
+        desde = hoyStr;
     }
   }
-  console.log(`[Período] periodo="${query.periodo}" desde="${desde}" hasta="${hasta}"`);
+
   return { desde, hasta };
 }
-
 // ================= SECCIÓN: DASHBOARD PRINCIPAL =================
 async function getDashboard(req, res) {
   try {

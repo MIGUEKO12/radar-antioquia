@@ -344,13 +344,20 @@ function actualizarMetricas(categorias) {
   const mapa  = {};
   categorias.forEach(c => { mapa[c.categoria] = c.total; });
   const total = categorias.reduce((s,c) => s+c.total, 0);
+
+  // General absorbe todas las categorías que no tienen tarjeta propia
+  const conTarjeta = ['orden_publico','desplazamiento','homicidio','feminicidio','mineria','clima'];
+  const totalGeneral = categorias
+    .filter(c => !conTarjeta.includes(c.categoria))
+    .reduce((s,c) => s+c.total, 0);
+
   if ($('m-total')) $('m-total').textContent = total;
-  if ($('m-gen'))   $('m-gen').textContent   = mapa.general       || 0;
+  if ($('m-gen'))   $('m-gen').textContent   = totalGeneral;
   if ($('m-op'))    $('m-op').textContent    = (mapa.orden_publico||0)+(mapa.desplazamiento||0);
-  if ($('m-hom'))   $('m-hom').textContent   = mapa.homicidio     || 0;
-  if ($('m-fem'))   $('m-fem').textContent   = mapa.feminicidio   || 0;
-  if ($('m-min'))   $('m-min').textContent   = mapa.mineria       || 0;
-  if ($('m-cli'))   $('m-cli').textContent   = mapa.clima         || 0;
+  if ($('m-hom'))   $('m-hom').textContent   = mapa.homicidio   || 0;
+  if ($('m-fem'))   $('m-fem').textContent   = mapa.feminicidio || 0;
+  if ($('m-min'))   $('m-min').textContent   = mapa.mineria     || 0;
+  if ($('m-cli'))   $('m-cli').textContent   = mapa.clima       || 0;
 }
 
 // ================= SECCIÓN: CLASIFICACIÓN (solo 6 categorías) =================

@@ -68,9 +68,12 @@ async function fetchNoticias(query, modo = 'antioquia') {
   return items.map(item => {
     const titulo = item.title?.[0] || '';          // Título de la noticia
     const link   = item.link?.[0]  || '';          // URL original
-    const fecha  = item.pubDate?.[0]               // Fecha de publicación
-      ? new Date(item.pubDate[0]).toISOString()    // Convertimos a ISO 8601
-      : new Date().toISOString();                  // Fallback: ahora
+    // Convertimos la fecha a hora Colombia (UTC-5)
+const fechaUTC = item.pubDate?.[0]
+  ? new Date(item.pubDate[0])
+  : new Date();
+const fechaCO  = new Date(fechaUTC.getTime() - (5 * 60 * 60 * 1000));
+const fecha    = fechaCO.toISOString().replace('Z', '');                 // Fallback: ahora
 
     // Detectamos ubicación geográfica en el título
     const { subregion, municipio } = detectarUbicacion(titulo);
