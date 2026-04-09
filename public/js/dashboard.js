@@ -1,4 +1,4 @@
-// ================= SECCIÓN: ESTADO GLOBAL =================
+ // ================= SECCIÓN: ESTADO GLOBAL =================
 const Estado = {
   modo:                  'antioquia',
   periodo:               'hoy',
@@ -344,13 +344,20 @@ function actualizarMetricas(categorias) {
   const mapa  = {};
   categorias.forEach(c => { mapa[c.categoria] = c.total; });
   const total = categorias.reduce((s,c) => s+c.total, 0);
+
+  // General = suma de categorías sin tarjeta propia + las que ya son 'general'
+  const conTarjeta = ['orden_publico','desplazamiento','homicidio','feminicidio','mineria','clima'];
+  const totalGeneral = categorias
+    .filter(c => !conTarjeta.includes(c.categoria))
+    .reduce((s,c) => s+c.total, 0);
+
   if ($('m-total')) $('m-total').textContent = total;
-  if ($('m-gen'))   $('m-gen').textContent   = mapa.general       || 0;
+  if ($('m-gen'))   $('m-gen').textContent   = totalGeneral;
   if ($('m-op'))    $('m-op').textContent    = (mapa.orden_publico||0)+(mapa.desplazamiento||0);
-  if ($('m-hom'))   $('m-hom').textContent   = mapa.homicidio     || 0;
-  if ($('m-fem'))   $('m-fem').textContent   = mapa.feminicidio   || 0;
-  if ($('m-min'))   $('m-min').textContent   = mapa.mineria       || 0;
-  if ($('m-cli'))   $('m-cli').textContent   = mapa.clima         || 0;
+  if ($('m-hom'))   $('m-hom').textContent   = mapa.homicidio   || 0;
+  if ($('m-fem'))   $('m-fem').textContent   = mapa.feminicidio || 0;
+  if ($('m-min'))   $('m-min').textContent   = mapa.mineria     || 0;
+  if ($('m-cli'))   $('m-cli').textContent   = mapa.clima       || 0;
 }
 
 // ================= SECCIÓN: CLASIFICACIÓN (solo 6 categorías) =================
@@ -746,60 +753,77 @@ document.addEventListener('keydown', e => {
 });
 
 function actualizarImpactoConModal(categorias) {
-  const ctx=($('chart-impacto'));
+  const ctx = $('chart-impacto');
   if (!ctx) return;
-  const activas=categorias.filter(c=>c.total>0);
-  const colores={ homicidio:'#c62828',feminicidio:'#880e4f',orden_publico:'#e53935',desplazamiento:'#d84315',mineria:'#e65100',clima:'#1565c0',salud:'#2e7d32',infraestructura:'#6a1b9a',general:'#9e9e9e' };
-  const nombresC={ homicidio:'Homicidio',feminicidio:'Feminicidio',orden_publico:'Orden público',desplazamiento:'Desplaz.',mineria:'Minería',clima:'Clima',salud:'Salud',infraestructura:'Infraest.',general:'General' };
-  if (chartImpacto) chartImpacto.destroy();
-  chartImpacto=new Chart(ctx,{
-    type:'doughnut',
-    data:{ labels:activas.map(c=>nombresC[c.categoria]||c.categoria), datasets:[{ data:activas.map(c=>c.total), backgroundColor:activas.map(c=>colores[c.categoria]||'#9e9e9e'), hoverOffset:10, borderWidth:2, borderColor:'#ffffff' }] },
-    options:{ responsive:true,cutout:'58%',
-      plugins:{ legend:{ position:'right',labels:{font:{size:11},boxWidth:12,padding:8},
-        onClick:(e,li)=>{ const cat=activas[li.index]?.categoria; if(cat) abrirModalCategoria(cat); }
-      }, tooltip:{ callbacks:{ label:ctx=>{ const t=ctx.parsed,s=activas.reduce((a,c)=>a+c.total,0); return ` ${t} noticias (${((t/s)*100).toFixed(1)}%) — clic para ver`; } } } },
-      onClick:(e,els)=>{ if(!els.length) return; const cat=activas[els[0].index]?.categoria; if(cat) abrirModalCategoria(cat); }
+
+  const principales = ['general','orden_publico','homicidio','feminicidio','mineria','clima'];
+  const colores = {
+    general:'#9e9e9e', orden_publico:'#e53935', homicidio:'#c62828',
+    feminicidio:'#880e4f', mineria:'#e65100', clima:'#1565c0'
+  };
+  const nombresC = {
+    general:'General', orden_publico:'Orden público', homicidio:'Homicidio',
+    feminicidio:'Feminicidio', mineria:'Minería', clima:'Clima'
+  };
+
+  // Agrupamos categorías fuera de las 6 en General
+  const mapaRaw = {};
+  categorias.forEach(c => { mapaRaw[c.categoria] = (mapaRaw[c.categoria]||0) + c.total; });
+  mapaRaw.orden_publico = (mapaRaw.orden_publico||0) + (mapaRaw.desplazamiento||0);
+  Object.keys(mapaRaw).forEach(cat => {
+    if (!principales.includes(cat) && cat !== 'desplazamiento') {
+      mapaRaw.general = (mapaRaw.general||0) + mapaRaw[cat];
     }
   });
-  ctx.style.cursor='pointer';
+
+  const activas = principales
+    .map(key => ({ categoria: key, total: mapaRaw[key]||0 }))
+    .filter(c => c.total > 0);
+
+  if (chartImpacto) chartImpacto.destroy();
+
+  chartImpacto = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: activas.map(c => nombresC[c.categoria]),
+      datasets: [{
+        data: activas.map(c => c.total),
+        backgroundColor: activas.map(c => colores[c.categoria]),
+        hoverOffset: 10, borderWidth: 2, borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true, cutout: '58%',
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { font:{ size:11 }, boxWidth:12, padding:8 },
+          onClick: (e, li) => {
+            const cat = activas[li.index]?.categoria;
+            if (cat) abrirModalCategoria(cat);
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const t = ctx.parsed;
+              const s = activas.reduce((a,c) => a+c.total, 0);
+              return ` ${t} noticias (${((t/s)*100).toFixed(1)}%) — clic para ver`;
+            }
+          }
+        }
+      },
+      onClick: (e, els) => {
+        if (!els.length) return;
+        const cat = activas[els[0].index]?.categoria;
+        if (cat) abrirModalCategoria(cat);
+      }
+    }
+  });
+  ctx.style.cursor = 'pointer';
 }
 
-// ================= SECCIÓN: UTILIDADES =================
-function contarCategoriasLocal(noticias) {
-  const conteo={};
-  noticias.forEach(n=>{ conteo[n.categoria]=(conteo[n.categoria]||0)+1; });
-  return Object.entries(conteo).map(([categoria,total])=>({categoria,total})).sort((a,b)=>b.total-a.total);
-}
-function mostrarSpinner(visible) { $('spinner').classList.toggle('oculto',!visible); }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const qLibre=$('q-libre');
-  if (qLibre) qLibre.addEventListener('keypress', e=>{ if(e.key==='Enter') ejecutarBusquedaLibre(); });
-});
-
-
-// ================= SECCIÓN: MODAL SUBCATEGORÍAS ORDEN PÚBLICO =================
-function abrirModalSubcategorias() {
-  const modal = $('modal-subcategorias');
-  if (modal) modal.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-}
-
-function cerrarModalSubcategorias() {
-  const modal = $('modal-subcategorias');
-  if (modal) modal.style.display = 'none';
-  document.body.style.overflow = '';
-}
-
-document.addEventListener('click', e => {
-  if (e.target === $('modal-subcategorias')) cerrarModalSubcategorias();
-});
-
-window.abrirModalSubcategorias  = abrirModalSubcategorias;
-window.cerrarModalSubcategorias = cerrarModalSubcategorias;
-
-// ================= SECCIÓN: EXPOSICIÓN GLOBAL =================
 window.setModo               = setModo;
 window.setPeriodo            = setPeriodo;
 window.setTendencia          = setTendencia;
