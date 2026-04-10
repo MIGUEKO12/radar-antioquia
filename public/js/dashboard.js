@@ -96,7 +96,7 @@ async function cargarDashboard() {
     resetFiltrosBotones();
     renderNoticiasPanel();
 
-    actualizarTendencia(data.tendencia);
+    
     actualizarImpactoConModal(data.resumen.porCategoria);
 
     $('ultima-actualizacion').textContent =
