@@ -883,23 +883,30 @@ window.actualizarImpactoConModal = actualizarImpactoConModal;
 window.abrirModalSinUbicar   = abrirModalSinUbicar;
 window.cerrarModal           = cerrarModal;
 
-// ================= SECCIÓN: MODAL FICHA TÉCNICA =================
-function abrirFichaTecnica() {
-  const modal = $('modal-ficha');
-  if (modal) modal.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
+// ================= SECCIÓN: FICHA TÉCNICA =================
+function toggleFicha() {
+  const ficha   = $('seccion-ficha');
+  const mapa    = $('seccion-mapa');
+  const graficos = $('seccion-graficos');
+  const metricas = $('metricas-section');
+
+  const visible = !ficha.classList.contains('oculto');
+
+  if (visible) {
+    // Ocultar ficha, mostrar dashboard
+    ficha.classList.add('oculto');
+    if (Estado.modo === 'antioquia') {
+      mapa.classList.remove('oculto');
+      graficos.classList.remove('oculto');
+      metricas.classList.remove('oculto');
+    }
+  } else {
+    // Mostrar ficha, ocultar dashboard
+    ficha.classList.remove('oculto');
+    mapa.classList.add('oculto');
+    graficos.classList.add('oculto');
+    metricas.classList.add('oculto');
+  }
 }
 
-function cerrarFichaTecnica(e) {
-  if (e && e.target !== $('modal-ficha')) return;
-  const modal = $('modal-ficha');
-  if (modal) modal.style.display = 'none';
-  document.body.style.overflow = '';
-}
-
-document.addEventListener('click', e => {
-  if (e.target === $('modal-ficha')) cerrarFichaTecnica();
-});
-
-window.abrirFichaTecnica  = abrirFichaTecnica;
-window.cerrarFichaTecnica = cerrarFichaTecnica;
+window.toggleFicha = toggleFicha;
