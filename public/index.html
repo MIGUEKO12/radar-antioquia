@@ -21,10 +21,6 @@
         <p class="header-sub">Gobernación de Antioquia — Monitoreo territorial</p>
       </div>
     </div>
-     <button onclick="abrirFichaTecnica()" style="padding:7px 16px;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.4);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:0.03em;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
-       Ficha técnica
-    </button>
-
     <div class="header-meta">
       <span id="fecha-actual"></span>
       <span class="dot-sep">·</span>
@@ -57,6 +53,10 @@
       <button class="pill"        onclick="setPeriodo('semana',this)">Semana</button>
       <button class="pill"        onclick="setPeriodo('mes',this)">Mes</button>
     </div>
+    <div style="border-left:1px solid #e0e0e0;height:28px;margin:0 4px;"></div>
+    <button onclick="window.abrirFichaTecnica && window.abrirFichaTecnica()" style="padding:6px 14px;background:white;color:#1b5e20;border:1px solid #1b5e20;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.background='#1b5e20';this.style.color='white'" onmouseout="this.style.background='white';this.style.color='#1b5e20'">
+      📋 Ficha técnica
+    </button>
   </div>
 </section>
 
@@ -168,28 +168,17 @@
       <div class="grafico-header">
         <h3 class="grafico-titulo">Tendencia de noticias</h3>
         <div class="periodo-pills small">
-          <button class="pill activo" onclick="setTendenciaIndep(7,this)">7d</button>
-          <button class="pill"        onclick="setTendenciaIndep(15,this)">15d</button>
-          <button class="pill"        onclick="setTendenciaIndep(30,this)">30d</button>
+          <button class="pill activo" onclick="setTendencia(7,this)">7d</button>
+          <button class="pill"        onclick="setTendencia(15,this)">15d</button>
+          <button class="pill"        onclick="setTendencia(30,this)">30d</button>
         </div>
-      </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" id="tendencia-filtros">
-        <button class="filtro-cat-btn activo" onclick="setTendenciaCategoria('todas',this)">Total</button>
-        <button class="filtro-cat-btn" onclick="setTendenciaCategoria('general',this)">General</button>
-        <button class="filtro-cat-btn" onclick="setTendenciaCategoria('orden_publico',this)">Orden público</button>
-        <button class="filtro-cat-btn" onclick="setTendenciaCategoria('homicidio',this)">Homicidio</button>
-        <button class="filtro-cat-btn" onclick="setTendenciaCategoria('feminicidio',this)">Feminicidio</button>
-        <button class="filtro-cat-btn" onclick="setTendenciaCategoria('mineria',this)">Minería</button>
-        <button class="filtro-cat-btn" onclick="setTendenciaCategoria('clima',this)">Clima</button>
       </div>
       <canvas id="chart-tendencia" height="110"></canvas>
     </div>
-
     <div class="grafico-card">
       <h3 class="grafico-titulo">Impacto mediático — clic para ver noticias</h3>
-      <canvas id="chart-impacto" height="160"></canvas>
+      <canvas id="chart-impacto" height="140"></canvas>
     </div>
-
   </div>
 </section>
 
@@ -329,191 +318,6 @@
       <span class="modal-cat-footer-texto">← → teclado para navegar · Enter para abrir · Esc para cerrar</span>
       <button class="nav-btn" onclick="cerrarModalCategoria()">Cerrar</button>
     </div>
-  </div>
-</div>
-<!-- MODAL FICHA TÉCNICA -->
-<div id="modal-ficha" onclick="cerrarFichaTecnica(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);">
-  <div style="background:white;border-radius:18px;width:100%;max-width:780px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.3);">
-
-    <!-- Cabecera -->
-    <div style="background:linear-gradient(135deg,#1b5e20,#43a047);padding:24px 28px;display:flex;justify-content:space-between;align-items:center;">
-      <div>
-        <h2 style="color:white;font-size:20px;font-weight:700;margin:0">Ficha Técnica</h2>
-        <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:4px 0 0">Radar de Noticias — Gobernación de Antioquia</p>
-      </div>
-      <button onclick="cerrarFichaTecnica()" style="width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,0.2);color:white;font-size:16px;cursor:pointer;font-weight:700;">✕</button>
-    </div>
-
-    <!-- Contenido scrolleable -->
-    <div style="overflow-y:auto;flex:1;padding:28px;">
-
-      <!-- Sección 1: Propósito -->
-      <div style="margin-bottom:28px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-          <span style="width:32px;height:32px;background:#e8f5e9;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🎯</span>
-          <h3 style="font-size:15px;font-weight:700;color:#1b5e20;margin:0">¿Para qué sirve esta herramienta?</h3>
-        </div>
-        <p style="font-size:13px;color:#374151;line-height:1.7;margin:0">El <strong>Radar de Noticias</strong> es un sistema de monitoreo de medios de comunicación en tiempo real para el departamento de Antioquia. Permite a los equipos de gobierno conocer qué está reportando la prensa sobre el territorio — municipio por municipio — sin tener que revisar cada medio manualmente.</p>
-      </div>
-
-      <!-- Sección 2: Problema que resuelve -->
-      <div style="margin-bottom:28px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-          <span style="width:32px;height:32px;background:#fff3e0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">⚠️</span>
-          <h3 style="font-size:15px;font-weight:700;color:#e65100;margin:0">¿Qué problema resuelve?</h3>
-        </div>
-        <p style="font-size:13px;color:#374151;line-height:1.7;margin:0">Hacer seguimiento manual a las noticias de 125 municipios y 9 subregiones es una tarea que tomaría horas cada día. Esta herramienta automatiza ese proceso: recolecta, clasifica y organiza geográficamente las noticias de forma automática, permitiendo identificar en segundos dónde están ocurriendo eventos de orden público, homicidios, desastres naturales u otros temas relevantes para la gestión territorial.</p>
-      </div>
-
-      <!-- Sección 3: Cómo funciona -->
-      <div style="margin-bottom:28px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-          <span style="width:32px;height:32px;background:#e3f2fd;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">⚙️</span>
-          <h3 style="font-size:15px;font-weight:700;color:#1565c0;margin:0">¿Cómo funciona?</h3>
-        </div>
-        <div style="font-size:13px;color:#374151;line-height:1.7;">
-          <p style="margin:0 0 10px">El sistema trabaja en tres pasos automáticos:</p>
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <div style="display:flex;gap:12px;align-items:flex-start;background:#f8f9fa;padding:12px;border-radius:8px;">
-              <span style="background:#1b5e20;color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">1</span>
-              <div><strong>Recolección:</strong> Cada 30 minutos el sistema consulta Google News con más de 30 términos de búsqueda relacionados con Antioquia y sus subregiones.</div>
-            </div>
-            <div style="display:flex;gap:12px;align-items:flex-start;background:#f8f9fa;padding:12px;border-radius:8px;">
-              <span style="background:#1b5e20;color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">2</span>
-              <div><strong>Clasificación:</strong> Cada noticia es analizada automáticamente y asignada a una categoría (Orden público, Homicidio, Minería, etc.) y a un municipio o subregión específica.</div>
-            </div>
-            <div style="display:flex;gap:12px;align-items:flex-start;background:#f8f9fa;padding:12px;border-radius:8px;">
-              <span style="background:#1b5e20;color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">3</span>
-              <div><strong>Visualización:</strong> Los resultados se muestran en el mapa, los gráficos y el panel de noticias de forma inmediata, sin intervención manual.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Sección 4: Funcionalidades -->
-      <div style="margin-bottom:28px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-          <span style="width:32px;height:32px;background:#f3e5f5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🗺️</span>
-          <h3 style="font-size:15px;font-weight:700;color:#6a1b9a;margin:0">Funcionalidades principales</h3>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
-          <div style="background:#f8f9fa;padding:12px;border-radius:8px;border-left:3px solid #1b5e20;">
-            <strong style="color:#1b5e20">Mapa interactivo</strong><br>
-            <span style="color:#6b7280">Haz clic en cualquier subregión para ver sus municipios y en un municipio para ver sus noticias.</span>
-          </div>
-          <div style="background:#f8f9fa;padding:12px;border-radius:8px;border-left:3px solid #e53935;">
-            <strong style="color:#e53935">Filtros por categoría</strong><br>
-            <span style="color:#6b7280">Filtra por Orden público, Homicidio, Minería, Clima o cualquier categoría con un solo clic.</span>
-          </div>
-          <div style="background:#f8f9fa;padding:12px;border-radius:8px;border-left:3px solid #1565c0;">
-            <strong style="color:#1565c0">Tendencia de noticias</strong><br>
-            <span style="color:#6b7280">Gráfico de línea que muestra la evolución diaria de noticias en los últimos 7, 15 o 30 días.</span>
-          </div>
-          <div style="background:#f8f9fa;padding:12px;border-radius:8px;border-left:3px solid #e65100;">
-            <strong style="color:#e65100">Impacto mediático</strong><br>
-            <span style="color:#6b7280">Gráfico de dona que muestra el peso de cada categoría. Haz clic para ver todas las noticias de esa categoría.</span>
-          </div>
-          <div style="background:#f8f9fa;padding:12px;border-radius:8px;border-left:3px solid #880e4f;">
-            <strong style="color:#880e4f">Búsqueda en Antioquia</strong><br>
-            <span style="color:#6b7280">Busca un término específico (ej: "ELN", "inundación") y el mapa se actualiza mostrando solo esas noticias.</span>
-          </div>
-          <div style="background:#f8f9fa;padding:12px;border-radius:8px;border-left:3px solid #757575;">
-            <strong style="color:#374151">Búsqueda libre</strong><br>
-            <span style="color:#6b7280">Busca cualquier noticia sin filtro geográfico. Útil para consultar temas nacionales o internacionales.</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Sección 5: Gráficos -->
-      <div style="margin-bottom:28px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-          <span style="width:32px;height:32px;background:#e8f5e9;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">📊</span>
-          <h3 style="font-size:15px;font-weight:700;color:#1b5e20;margin:0">¿Qué mide cada gráfico?</h3>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;color:#374151;">
-          <div style="background:#f0fdf4;padding:14px;border-radius:8px;border:1px solid #bbf7d0;">
-            <strong>Tendencia de noticias</strong> — Línea de tiempo<br>
-            <span style="color:#6b7280">Muestra cuántas noticias se publicaron cada día en el período seleccionado. Una línea que sube indica mayor cobertura mediática — posiblemente un evento significativo. Una línea plana indica flujo normal. Puedes filtrar por categoría para ver la tendencia solo de homicidios, minería, etc.</span>
-          </div>
-          <div style="background:#fff8f0;padding:14px;border-radius:8px;border:1px solid #fed7aa;">
-            <strong>Impacto mediático</strong> — Gráfico de dona<br>
-            <span style="color:#6b7280">Muestra qué proporción del total de noticias corresponde a cada categoría. Si Orden público ocupa el 40% del gráfico, significa que 4 de cada 10 noticias del período hablan de ese tema. Es un indicador de qué temas están dominando la agenda mediática en Antioquia.</span>
-          </div>
-          <div style="background:#f0f4ff;padding:14px;border-radius:8px;border:1px solid #c7d2fe;">
-            <strong>Clasificación de noticias</strong> — Barras laterales<br>
-            <span style="color:#6b7280">Muestra el conteo absoluto de noticias por categoría con una barra proporcional. La categoría con más noticias siempre tiene la barra completa y las demás se ajustan proporcionalmente.</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Sección 6: Categorías -->
-      <div style="margin-bottom:28px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-          <span style="width:32px;height:32px;background:#fff3e0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🏷️</span>
-          <h3 style="font-size:15px;font-weight:700;color:#e65100;margin:0">Categorías de noticias</h3>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
-          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff5f5;border-radius:8px;border-left:3px solid #e53935;">
-            <span style="font-weight:600;color:#e53935;">Orden público</span>
-            <span style="color:#9ca3af">Combates, amenazas, secuestros y 14 subcategorías más</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff5f5;border-radius:8px;border-left:3px solid #c62828;">
-            <span style="font-weight:600;color:#c62828;">Homicidio</span>
-            <span style="color:#9ca3af">Muertes violentas reportadas en medios</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fdf4ff;border-radius:8px;border-left:3px solid #880e4f;">
-            <span style="font-weight:600;color:#880e4f;">Feminicidio</span>
-            <span style="color:#9ca3af">Casos de violencia de género con resultado fatal</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff8f0;border-radius:8px;border-left:3px solid #e65100;">
-            <span style="font-weight:600;color:#e65100;">Minería</span>
-            <span style="color:#9ca3af">Minería legal e ilegal, dragas y recursos naturales</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#eff6ff;border-radius:8px;border-left:3px solid #1565c0;">
-            <span style="font-weight:600;color:#1565c0;">Clima</span>
-            <span style="color:#9ca3af">Inundaciones, deslizamientos y emergencias naturales</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f9fafb;border-radius:8px;border-left:3px solid #757575;">
-            <span style="font-weight:600;color:#374151;">General</span>
-            <span style="color:#9ca3af">Noticias de Antioquia que no encajan en las anteriores</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Sección 7: Mantenimiento -->
-      <div style="margin-bottom:8px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-          <span style="width:32px;height:32px;background:#e3f2fd;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🔧</span>
-          <h3 style="font-size:15px;font-weight:700;color:#1565c0;margin:0">Mantenimiento automático</h3>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
-          <div style="display:flex;gap:12px;align-items:center;padding:10px 14px;background:#f8f9fa;border-radius:8px;">
-            <span style="font-size:18px">⏱️</span>
-            <div><strong>Cada 30 minutos:</strong> <span style="color:#6b7280">Recolección automática de nuevas noticias de Antioquia.</span></div>
-          </div>
-          <div style="display:flex;gap:12px;align-items:center;padding:10px 14px;background:#f8f9fa;border-radius:8px;">
-            <span style="font-size:18px">🌙</span>
-            <div><strong>Cada día a las 3:00 a.m.:</strong> <span style="color:#6b7280">Limpieza automática de noticias antiguas para mantener el sistema ágil.</span></div>
-          </div>
-          <div style="display:flex;gap:12px;align-items:center;padding:10px 14px;background:#f8f9fa;border-radius:8px;">
-            <span style="font-size:18px">📅</span>
-            <div><strong>Al iniciar el sistema:</strong> <span style="color:#6b7280">Recolección histórica desde el 1 de enero del año en curso para garantizar el registro anual completo.</span></div>
-          </div>
-          <div style="display:flex;gap:12px;align-items:center;padding:10px 14px;background:#f8f9fa;border-radius:8px;">
-            <span style="font-size:18px">🔁</span>
-            <div><strong>Actualización en pantalla:</strong> <span style="color:#6b7280">El dashboard se refresca automáticamente cada 5 minutos sin necesidad de recargar la página.</span></div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Footer -->
-    <div style="padding:14px 28px;border-top:1px solid #f0f0f0;background:#f8f9fa;display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:12px;color:#9ca3af;">Gobernación de Antioquia · Sistema de Monitoreo Territorial</span>
-      <button onclick="cerrarFichaTecnica()" style="padding:8px 20px;background:#1b5e20;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Cerrar</button>
-    </div>
-
   </div>
 </div>
 

@@ -882,3 +882,24 @@ window.seleccionarNoticia    = seleccionarNoticia;
 window.actualizarImpactoConModal = actualizarImpactoConModal;
 window.abrirModalSinUbicar   = abrirModalSinUbicar;
 window.cerrarModal           = cerrarModal;
+
+// ================= SECCIÓN: MODAL FICHA TÉCNICA =================
+function abrirFichaTecnica() {
+  const modal = $('modal-ficha');
+  if (modal) modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarFichaTecnica(e) {
+  if (e && e.target !== $('modal-ficha')) return;
+  const modal = $('modal-ficha');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('click', e => {
+  if (e.target === $('modal-ficha')) cerrarFichaTecnica();
+});
+
+window.abrirFichaTecnica  = abrirFichaTecnica;
+window.cerrarFichaTecnica = cerrarFichaTecnica;
