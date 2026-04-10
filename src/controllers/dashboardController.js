@@ -169,4 +169,47 @@ async function getNoticiasCategoria(req, res) {
   }
 }
 
-module.exports = { getDashboard, getSubregion, getMunicipio, getNoticiasCategoria, buscarNoticias, recolectarManual };
+// ================= SECCIÓN: TENDENCIA POR CATEGORÍA =================
+async function getTendenciaCategoria(req, res) {
+  try {
+    const dias      = parseInt(req.query.dias) || 7;
+    const categoria = String(req.query.categoria || 'todas').slice(0, 50);
+
+    const tendencia = NoticiaModel.tendenciaPorDia({ dias, modo: 'antioquia' });
+
+    // Si piden una categoría específica, filtramos por ella en la DB
+    if (categoria !== 'todas') {
+      const diasData = [];
+      for (let i = dias - 1; i >= 0; i--) {
+        const co    = new Date(new Date().getTime() - (5 * 60 * 60 * 1000));
+        const fecha = new Date(co);
+        fecha.setDate(fecha.getDate() - i);
+        const diaStr = fecha.toISOString().split('T')[0];
+
+        const desde = diaStr;
+        const hasta = diaStr;
+        const cats  = NoticiaModel.contarPorCategoria({ desde, hasta, modo: 'antioquia' });
+
+        // orden_publico incluye desplazamiento
+        let total = 0;
+        if (categoria === 'orden_publico') {
+          const op = cats.find(c => c.categoria === 'orden_publico');
+          const dp = cats.find(c => c.categoria === 'desplazamiento');
+          total = (op?.total || 0) + (dp?.total || 0);
+        } else {
+          total = cats.find(c => c.categoria === categoria)?.total || 0;
+        }
+
+        diasData.push({ dia: diaStr, total });
+      }
+      return res.json({ ok: true, dias, categoria, tendencia: diasData });
+    }
+
+    res.json({ ok: true, dias, categoria: 'todas', tendencia });
+  } catch (err) {
+    console.error('[TendenciaCategoria]', err);
+    res.status(500).json({ ok: false, error: 'Error al cargar tendencia' });
+  }
+}
+
+module.exports = { getDashboard, getSubregion, getMunicipio, getNoticiasCategoria, getTendenciaCategoria, buscarNoticias, recolectarManual };

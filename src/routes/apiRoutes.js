@@ -8,5 +8,6 @@ router.get('/mapa/municipio',         controller.getMunicipio);
 router.get('/noticias/categoria',     controller.getNoticiasCategoria);   // NUEVO — drill-down municipio
 router.get('/noticias/buscar',        controller.buscarNoticias);
 router.post('/noticias/recolectar',   controller.recolectarManual);
+router.get('/noticias/tendencia', controller.getTendenciaCategoria);
 
 module.exports = router;

@@ -164,17 +164,28 @@
       <div class="grafico-header">
         <h3 class="grafico-titulo">Tendencia de noticias</h3>
         <div class="periodo-pills small">
-          <button class="pill activo" onclick="setTendencia(7,this)">7d</button>
-          <button class="pill"        onclick="setTendencia(15,this)">15d</button>
-          <button class="pill"        onclick="setTendencia(30,this)">30d</button>
+          <button class="pill activo" onclick="setTendenciaIndep(7,this)">7d</button>
+          <button class="pill"        onclick="setTendenciaIndep(15,this)">15d</button>
+          <button class="pill"        onclick="setTendenciaIndep(30,this)">30d</button>
         </div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" id="tendencia-filtros">
+        <button class="filtro-cat-btn activo" onclick="setTendenciaCategoria('todas',this)">Total</button>
+        <button class="filtro-cat-btn" onclick="setTendenciaCategoria('general',this)">General</button>
+        <button class="filtro-cat-btn" onclick="setTendenciaCategoria('orden_publico',this)">Orden público</button>
+        <button class="filtro-cat-btn" onclick="setTendenciaCategoria('homicidio',this)">Homicidio</button>
+        <button class="filtro-cat-btn" onclick="setTendenciaCategoria('feminicidio',this)">Feminicidio</button>
+        <button class="filtro-cat-btn" onclick="setTendenciaCategoria('mineria',this)">Minería</button>
+        <button class="filtro-cat-btn" onclick="setTendenciaCategoria('clima',this)">Clima</button>
       </div>
       <canvas id="chart-tendencia" height="110"></canvas>
     </div>
+
     <div class="grafico-card">
       <h3 class="grafico-titulo">Impacto mediático — clic para ver noticias</h3>
-      <canvas id="chart-impacto" height="140"></canvas>
+      <canvas id="chart-impacto" height="160"></canvas>
     </div>
+
   </div>
 </section>
 

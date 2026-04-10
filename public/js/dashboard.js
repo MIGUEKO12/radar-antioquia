@@ -36,10 +36,12 @@ document.addEventListener('DOMContentLoaded', () => {
     ocultarAviso();
     cerrarModal();
     cargarDashboard();
+    cargarTendenciaIndep();
   };
 
   iniciarTooltipOP();
   cargarDashboard();
+  cargarTendenciaIndep();
 
   setInterval(() => {
     if (Estado.modo === 'antioquia' && !Estado.subregionActual) cargarDashboard();
@@ -309,7 +311,6 @@ async function entrarSubregion(id) {
   } catch(err) { console.error('[Subregion]', err); }
   finally { mostrarSpinner(false); }
 }
-
 // ================= SECCIÓN: DRILL-DOWN MUNICIPIO =================
 async function entrarMunicipio(nombre, subregion) {
   mostrarSpinner(true);
@@ -582,28 +583,82 @@ function irPagina(n) {
 
 // ================= SECCIÓN: GRÁFICOS =================
 let chartTendencia=null, chartImpacto=null;
-
 function actualizarTendencia(datos) {
-  const ctx    = $('chart-tendencia');
-  const labels = datos.map(d => new Date(d.dia+'T12:00:00').toLocaleDateString('es-CO',{day:'numeric',month:'short'}));
+  const ctx     = $('chart-tendencia');
+  const labels  = datos.map(d => new Date(d.dia+'T12:00:00')
+    .toLocaleDateString('es-CO',{day:'numeric',month:'short'}));
   const valores = datos.map(d => d.total);
+  const color   = EstadoTendencia?.color || '#43a047';
+
   if (chartTendencia) chartTendencia.destroy();
   chartTendencia = new Chart(ctx, {
     type:'line',
-    data:{ labels, datasets:[{ label:'Noticias',data:valores,borderColor:'#43a047',backgroundColor:'rgba(67,160,71,0.08)',fill:true,tension:0.35,pointRadius:4,pointBackgroundColor:'#43a047',borderWidth:2 }] },
-    options:{ responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:11},precision:0}}} }
+    data:{ labels, datasets:[{
+      label:'Noticias', data:valores,
+      borderColor: color,
+      backgroundColor: color + '18',
+      fill:true, tension:0.35,
+      pointRadius:4, pointBackgroundColor: color, borderWidth:2
+    }]},
+    options:{
+      responsive:true,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ grid:{ display:false }, ticks:{ font:{ size:11 } } },
+        y:{ grid:{ color:'rgba(0,0,0,0.05)' }, ticks:{ font:{ size:11 }, precision:0 } }
+      }
+    }
   });
 }
+// Estado independiente de la gráfica de tendencia
+const EstadoTendencia = {
+  dias:      7,
+  categoria: 'todas'
+};
 
-async function setTendencia(dias, btn) {
-  document.querySelectorAll('.periodo-pills.small .pill').forEach(b => b.classList.remove('activo'));
-  if (btn) btn.classList.add('activo');
+async function cargarTendenciaIndep() {
   try {
-    const res=await fetch(`/api/dashboard?periodo=${Estado.periodo}`);
-    const data=await res.json();
-    if (data.ok) actualizarTendencia(data.tendencia);
-  } catch(e){}
+    const params = new URLSearchParams({
+      dias:      EstadoTendencia.dias,
+      categoria: EstadoTendencia.categoria
+    });
+    const res  = await fetch(`/api/noticias/tendencia?${params}`);
+    const data = await res.json();
+    if (!data.ok) return;
+    actualizarTendencia(data.tendencia);
+  } catch(e) { console.error('[Tendencia]', e); }
 }
+
+function setTendenciaIndep(dias, btn) {
+  EstadoTendencia.dias = dias;
+  document.querySelectorAll('.periodo-pills.small .pill')
+    .forEach(b => b.classList.remove('activo'));
+  if (btn) btn.classList.add('activo');
+  cargarTendenciaIndep();
+}
+
+function setTendenciaCategoria(cat, btn) {
+  EstadoTendencia.categoria = cat;
+  document.querySelectorAll('#tendencia-filtros .filtro-cat-btn')
+    .forEach(b => b.classList.remove('activo'));
+  if (btn) btn.classList.add('activo');
+
+  // Cambia el color de la línea según categoría
+  EstadoTendencia.color = {
+    todas:         '#43a047',
+    general:       '#9e9e9e',
+    orden_publico: '#e53935',
+    homicidio:     '#c62828',
+    feminicidio:   '#880e4f',
+    mineria:       '#e65100',
+    clima:         '#1565c0'
+  }[cat] || '#43a047';
+
+  cargarTendenciaIndep();
+}
+
+window.setTendenciaIndep     = setTendenciaIndep;
+window.setTendenciaCategoria = setTendenciaCategoria;
 
 // ================= SECCIÓN: MODAL CATEGORÍA =================
 const ITEMS_MODAL = 10;
@@ -809,7 +864,7 @@ window.cerrarModalSubcategorias = cerrarModalSubcategorias;
 // ================= SECCIÓN: EXPOSICIÓN GLOBAL =================
 window.setModo               = setModo;
 window.setPeriodo            = setPeriodo;
-window.setTendencia          = setTendencia;
+window.setTendencia          = setTendenciaIndep;
 window.ejecutarBusquedaLibre = ejecutarBusquedaLibre;
 window.buscarEnAntioquia     = buscarEnAntioquia;
 window.irPagina              = irPagina;
