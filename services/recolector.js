@@ -12,18 +12,54 @@ const RSS_BASE = 'https://news.google.com/rss/search';
 // Búsquedas automáticas que se ejecutan en cada ciclo del cron para Antioquia
 // Cubren los temas más relevantes para la Gobernación
 const QUERIES_ANTIOQUIA = [
-  'Antioquia',
-  'Medellín',
+  // General departamento
+  'Antioquia Colombia',
+  'Gobernación Antioquia',
+  'Medellín Colombia',
+
+  // Subregiones
   'Urabá Antioquia',
   'Bajo Cauca Antioquia',
   'Nordeste Antioquia',
-  'orden público Antioquia',
-  'minería Antioquia',
-  'desplazamiento Antioquia',
-  'ELN Antioquia',
-  'inundación Antioquia'
-];
+  'Oriente Antioquia',
+  'Suroeste Antioquia',
+  'Occidente Antioquia',
+  'Norte Antioquia',
+  'Magdalena Medio Antioquia',
+  'Valle de Aburrá',
 
+  // Orden público
+  'orden público Antioquia',
+  'ELN Antioquia',
+  'FARC Antioquia',
+  'Clan del Golfo Antioquia',
+  'combate Antioquia',
+  'desplazamiento Antioquia',
+  'secuestro Antioquia',
+  'masacre Antioquia',
+  'atentado Antioquia',
+
+  // Homicidio
+  'homicidio Antioquia',
+  'asesinato Antioquia',
+  'feminicidio Antioquia',
+
+  // Minería
+  'minería ilegal Antioquia',
+  'minería Antioquia',
+  'dragas Antioquia',
+
+  // Clima y desastres
+  'inundación Antioquia',
+  'deslizamiento Antioquia',
+  'emergencia Antioquia',
+  'lluvia Antioquia',
+
+  // Social
+  'salud Antioquia',
+  'educación Antioquia',
+  'infraestructura Antioquia'
+];
 // ================= SECCIÓN: FUNCIÓN DE FETCH RSS =================
 /**
  * Descarga y parsea el RSS de Google News para un término de búsqueda.
@@ -164,10 +200,69 @@ async function buscarLibre(query, desde, hasta) {
   // Ordenamos más reciente primero antes de retornar
   return resultado.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 }
+// ================= SECCIÓN: RECOLECCIÓN HISTÓRICA =================
+/**
+ * Recolecta noticias históricas desde el 1 de enero del año actual.
+ * Se ejecuta una sola vez al arrancar el servidor.
+ * No duplica gracias al hash MD5.
+ */
+async function recolectarHistorico() {
+  const anio    = new Date().getFullYear();
+  const inicio  = new Date(`${anio}-01-01`);
+  const hoy     = new Date();
+  let insertadas = 0;
+
+  console.log(`[HISTÓRICO] Iniciando recolección desde ${anio}-01-01...`);
+
+  // Iteramos semana por semana desde enero hasta hoy
+  const semanas = [];
+  let cursor = new Date(inicio);
+  while (cursor <= hoy) {
+    const desde = cursor.toISOString().split('T')[0];
+    cursor.setDate(cursor.getDate() + 7);
+    const hasta = cursor > hoy
+      ? hoy.toISOString().split('T')[0]
+      : cursor.toISOString().split('T')[0];
+    semanas.push({ desde, hasta });
+  }
+
+  // Queries principales para el histórico — más focalizadas
+  const queriesHistorico = [
+    'Antioquia Colombia',
+    'orden público Antioquia',
+    'homicidio Antioquia',
+    'feminicidio Antioquia',
+    'minería Antioquia',
+    'desplazamiento Antioquia',
+    'ELN Antioquia',
+    'inundación Antioquia',
+    'emergencia Antioquia'
+  ];
+
+  for (const { desde, hasta } of semanas) {
+    for (const query of queriesHistorico) {
+      try {
+        const queryConFecha = `${query} after:${desde} before:${hasta}`;
+        const noticias = await fetchNoticias(queryConFecha, 'antioquia');
+        for (const n of noticias) {
+          if (insertarNoticia(n)) insertadas++;
+        }
+        await new Promise(r => setTimeout(r, 800));
+      } catch (err) {
+        console.error(`[HISTÓRICO] Error ${query} ${desde}:`, err.message);
+      }
+    }
+    console.log(`[HISTÓRICO] Semana ${desde} → ${hasta} completada`);
+  }
+
+  console.log(`[HISTÓRICO] Completado — ${insertadas} noticias nuevas insertadas`);
+  return insertadas;
+}
 
 // ================= SECCIÓN: EXPORTACIONES =================
 module.exports = {
   fetchNoticias,
   recolectarAntioquia,
+  recolectarHistorico,
   buscarLibre
 };

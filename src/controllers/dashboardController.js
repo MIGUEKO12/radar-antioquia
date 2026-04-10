@@ -172,7 +172,8 @@ async function getNoticiasCategoria(req, res) {
 // ================= SECCIÓN: TENDENCIA POR CATEGORÍA =================
 async function getTendenciaCategoria(req, res) {
   try {
-    const dias      = parseInt(req.query.dias) || 7;
+    const dias = Math.min(parseInt(req.query.dias) || 7, 365);
+
     const categoria = String(req.query.categoria || 'todas').slice(0, 50);
 
     const tendencia = NoticiaModel.tendenciaPorDia({ dias, modo: 'antioquia' });

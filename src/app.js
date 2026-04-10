@@ -13,7 +13,8 @@ const apiRoutes                      = require('./routes/apiRoutes');
 const { limiterGeneral,
         limiterBusqueda,
         headersSeguridad }           = require('./middlewares/seguridad');
-const { recolectarAntioquia }        = require('../services/recolector');
+const { recolectarAntioquia,
+        recolectarHistorico }        = require('../services/recolector');
 const { limpiarAntiguos,
         vacuumDB,
         estadisticasDB }             = require('../models/NoticiaModel');
@@ -52,7 +53,8 @@ app.use((err, req, res, next) => {
 // ================= SECCIÓN: CRON JOBS =================
 const intervalo = parseInt(process.env.CRON_INTERVALO_MINUTOS) || 30;
 
-cron.schedule(`*/${intervalo} 6-22 * * *`, async () => {
+// Recolecta cada 30 minutos las 24 horas
+cron.schedule(`*/${intervalo} * * * *`, async () => {
   try {
     const r = await recolectarAntioquia();
     console.log(`[CRON] ${r.insertadas} nuevas, ${r.duplicadas} duplicadas`);
@@ -61,10 +63,7 @@ cron.schedule(`*/${intervalo} 6-22 * * *`, async () => {
   }
 });
 
-cron.schedule('0 23,1,3,5 * * *', async () => {
-  try { await recolectarAntioquia(); } catch (err) { console.error('[CRON nocturno]', err.message); }
-});
-
+// Mantenimiento diario a las 3am
 cron.schedule('0 3 * * *', () => {
   try {
     const eliminadas = limpiarAntiguos();
@@ -74,7 +73,6 @@ cron.schedule('0 3 * * *', () => {
 });
 
 // ================= SECCIÓN: ARRANQUE =================
-// IMPORTANTE: inicializamos la DB antes de arrancar el servidor
 async function arrancar() {
   try {
     // 1. Inicializamos sql.js y la base de datos
@@ -104,15 +102,26 @@ async function arrancar() {
         console.error('  Error en recolección inicial:', err.message);
       }
 
+      // 4. Recolección histórica si la DB tiene pocas noticias
+      try {
+        const stats = estadisticasDB();
+        if (stats.total < 500) {
+          console.log('  Iniciando recolección histórica desde enero...');
+          recolectarHistorico().catch(err => console.error('[HISTÓRICO]', err));
+        }
+      } catch (err) {
+        console.error('  Error verificando histórico:', err.message);
+      }
+
       console.log('═══════════════════════════════════════════\n');
     });
 
   } catch (err) {
     console.error('[ARRANQUE] Error crítico:', err);
-    process.exit(1); // Terminamos si la DB no puede inicializarse
+    process.exit(1);
   }
 }
 
-arrancar(); // Ejecutamos la función principal
+arrancar();
 
 module.exports = app;
