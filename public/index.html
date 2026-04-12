@@ -101,12 +101,17 @@
     <section class="col-mapa">
       <div class="breadcrumb" id="breadcrumb"><span class="bc-item activo">Antioquia</span></div>
       <div id="aviso-ubicacion" style="display:none;font-size:12px;color:#e65100;background:#fff3e0;padding:8px 14px;border-radius:8px;border:1px solid #ffcc02;margin-bottom:8px;align-items:center;gap:8px;"></div>
-      <div id="mapa" class="mapa-container"></div>
+      <div style="position:relative;">
+        <div id="mapa" class="mapa-container"></div>
+        <button id="btn-sin-ubicar" onclick="verSinUbicar()" style="display:none;position:absolute;bottom:50px;left:10px;z-index:999;background:#78909c;color:white;border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+          Sin ubicar: <span id="contador-sin-ubicar">0</span>
+        </button>
+      </div>
       <div class="leyenda-mapa">
         <span class="leyenda-item"><span class="dot" style="background:#81c784"></span> General</span>
         <span class="leyenda-item"><span class="dot" style="background:#e57373"></span> Homicidio</span>
         <span class="leyenda-item"><span class="dot" style="background:#c62828"></span> Orden público</span>
-         <span class="leyenda-item"><span class="dot" style="background:#78909c"></span> Sin ubicar</span>
+        <span class="leyenda-item"><span class="dot" style="background:#78909c"></span> Sin ubicar</span>
       </div>
     </section>
 

@@ -112,11 +112,8 @@ function actualizarMapa(subregiones, noticias, total) {
   subregiones.forEach(s => { datosParaMapa[s.subregion] = s.total; });
   window._totalNoticias = total || 0;
   window.MapaRadar.pintarSubregiones(datosParaMapa, noticias || []);
-  // Actualizar contador sin ubicar en leyenda
-  const conSubregion = subregiones.reduce((s, m) => s + m.total, 0);
-  const sinUbicar = (total || 0) - conSubregion;
-  if ($('contador-sin-ubicar')) $('contador-sin-ubicar').textContent = sinUbicar > 0 ? sinUbicar : 0;
 }
+
 // ================= SECCIÓN: MÉTRICAS =================
 function actualizarMetricas(categorias) {
   const mapa = {};
@@ -716,6 +713,13 @@ function toggleFicha() {
     mapa.classList.add('oculto'); graficos.classList.add('oculto'); metricas.classList.add('oculto');
   }
 }
+
+// ================= SECCIÓN: VER SIN UBICAR =================
+function verSinUbicar() {
+  const sinUbicar = Estado.todasNoticiasPanel.filter(n => !n.subregion || n.subregion === 'general');
+  actualizarNoticias(sinUbicar, `Sin municipio detectado (${sinUbicar.length})`);
+}
+window.verSinUbicar = verSinUbicar;
 
 // ================= SECCIÓN: EXPOSICIÓN GLOBAL =================
 window.setModo               = setModo;

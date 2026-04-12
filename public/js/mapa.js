@@ -174,26 +174,19 @@ let nivelActual    = 'antioquia';
 let subrActual     = null;
 let marcadores     = [];
 let datosSubregion = {};
-// Guardamos noticias por subregión para determinar color
 let noticiasSubregion = {};
 
 // ================= SECCIÓN: COLORES POR CATEGORÍA =================
-// Prioridad: homicidio > orden_publico > general
-// Colores pasteles para distinguir sin ser agresivos
-const COLOR_HOMICIDIO    = '#e57373'; // Rojo pastel
-const COLOR_ORDEN        = '#c62828'; // Rojo oscuro pastel
-const COLOR_GENERAL      = '#81c784'; // Verde pastel
-const COLOR_SIN_NOTICIAS = '#bdbdbd'; // Gris neutro
-const COLOR_SIN_UBICAR   = '#78909c'; // Gris azulado
+const COLOR_HOMICIDIO    = '#e57373';
+const COLOR_ORDEN        = '#c62828';
+const COLOR_GENERAL      = '#81c784';
+const COLOR_SIN_NOTICIAS = '#bdbdbd';
+const COLOR_SIN_UBICAR   = '#78909c';
 
-// Determina el color del marcador según las categorías presentes
 function colorPorCategorias(cats) {
   if (!cats || Object.keys(cats).length === 0) return COLOR_SIN_NOTICIAS;
-  // Prioridad 1: homicidio o feminicidio
   if ((cats.homicidio || 0) > 0 || (cats.feminicidio || 0) > 0) return COLOR_HOMICIDIO;
-  // Prioridad 2: orden público o desplazamiento
   if ((cats.orden_publico || 0) > 0 || (cats.desplazamiento || 0) > 0) return COLOR_ORDEN;
-  // Solo generales u otras
   const total = Object.values(cats).reduce((s, v) => s + v, 0);
   if (total > 0) return COLOR_GENERAL;
   return COLOR_SIN_NOTICIAS;
@@ -223,7 +216,6 @@ function limpiarMarcadores() {
 }
 
 // ================= SECCIÓN: NIVEL 1 — SUBREGIONES =================
-// Ahora recibe también las noticias para colorear por categoría
 function pintarSubregiones(datos, noticias) {
   limpiarMarcadores();
   nivelActual = 'antioquia';
@@ -232,7 +224,6 @@ function pintarSubregiones(datos, noticias) {
   mapa.flyTo([6.7, -75.5], 8, { duration: 0.8 });
   actualizarBreadcrumb([{ label: 'Antioquia', activo: true }]);
 
-  // Agrupamos categorías por subregión a partir de las noticias
   const catsPorSubregion = {};
   if (noticias && noticias.length > 0) {
     noticias.forEach(n => {
@@ -243,10 +234,6 @@ function pintarSubregiones(datos, noticias) {
     });
   }
 
-  // Calculamos sin ubicar
-  const conSubregion = Object.values(datos).reduce((s, v) => s + v, 0);
-  const sinUbicar    = (window._totalNoticias || 0) - conSubregion;
-
   Object.entries(CENTROS_SUBREGION).forEach(([id, info]) => {
     const total = datos[id] || 0;
     const cats  = catsPorSubregion[id] || {};
@@ -255,27 +242,11 @@ function pintarSubregiones(datos, noticias) {
 
     const marker = L.marker([info.lat, info.lng], { icon: icono })
       .addTo(mapa)
-      .bindTooltip(`<b>${info.nombre}</b><br>${total} noticias`, {
-        permanent: false, direction: 'top'
-      })
-      .on('click', () => {
-        if (window.onSubregionClick) window.onSubregionClick(id);
-      });
+      .bindTooltip(`<b>${info.nombre}</b><br>${total} noticias`, { permanent:false, direction:'top' })
+      .on('click', () => { if (window.onSubregionClick) window.onSubregionClick(id); });
 
     marcadores.push(marker);
   });
-
-  // Marcador de sin ubicar siempre visible si hay noticias sin subregión
-  if (sinUbicar > 0) {
-    const icono = crearIcono(sinUbicar, COLOR_SIN_UBICAR, 32);
-    const marker = L.marker([5.5, -75.5], { icon: icono })
-      .addTo(mapa)
-      .bindTooltip(
-        `<b>Sin municipio detectado</b><br>${sinUbicar} noticias de Antioquia en general`,
-        { permanent: false, direction: 'top' }
-      );
-    marcadores.push(marker);
-  }
 
   datosSubregion    = datos;
   noticiasSubregion = noticias || [];
@@ -298,7 +269,6 @@ function pintarMunicipios(id, munis, nombreSubr, noticias) {
   const coords = MUNICIPIOS_COORDS[id] || [];
   const norm   = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 
-  // Agrupamos categorías por municipio
   const catsPorMuni = {};
   if (noticias && noticias.length > 0) {
     noticias.forEach(n => {
@@ -311,25 +281,19 @@ function pintarMunicipios(id, munis, nombreSubr, noticias) {
 
   coords.forEach(muni => {
     const munNorm = norm(muni.nombre);
-
     let total = munis[munNorm] || munis[muni.nombre.toLowerCase()] || 0;
     if (!total) {
       const entrada = Object.entries(munis).find(([k]) => norm(k) === munNorm);
       if (entrada) total = entrada[1];
     }
-
     const cats  = catsPorMuni[munNorm] || {};
     const color = total > 0 ? colorPorCategorias(cats) : COLOR_SIN_NOTICIAS;
     const icono = crearIcono(total, color, 28);
 
     const marker = L.marker([muni.lat, muni.lng], { icon: icono })
       .addTo(mapa)
-      .bindTooltip(`<b>${muni.nombre}</b><br>${total} noticias`, {
-        permanent: false, direction: 'top'
-      })
-      .on('click', () => {
-        if (window.onMunicipioClick) window.onMunicipioClick(muni.nombre, id);
-      });
+      .bindTooltip(`<b>${muni.nombre}</b><br>${total} noticias`, { permanent:false, direction:'top' })
+      .on('click', () => { if (window.onMunicipioClick) window.onMunicipioClick(muni.nombre, id); });
 
     marcadores.push(marker);
   });
@@ -362,29 +326,18 @@ function pintarNoticiasIndividuales(noticias, municipio, subregion) {
   const color = colorPorCategorias(cats);
 
   const icono = L.divIcon({
-    className: '',
-    iconSize:  [52, 52],
-    iconAnchor:[26, 26],
-    html: `<div style="
-      width:52px;height:52px;background:${color};
-      border:3px solid white;border-radius:50%;
-      display:flex;flex-direction:column;
-      align-items:center;justify-content:center;
-      box-shadow:0 3px 10px rgba(0,0,0,0.3);cursor:pointer;">
+    className:'', iconSize:[52,52], iconAnchor:[26,26],
+    html:`<div style="width:52px;height:52px;background:${color};border:3px solid white;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,0.3);cursor:pointer;">
       <span style="font-size:16px;font-weight:700;color:white;line-height:1">${total}</span>
       <span style="font-size:9px;color:rgba(255,255,255,0.85);line-height:1;margin-top:2px">noticias</span>
     </div>`
   });
 
-  const resumenCats = Object.entries(cats)
-    .sort((a,b) => b[1]-a[1]).slice(0,3)
-    .map(([c,n]) => `${c}: ${n}`).join(' · ');
+  const resumenCats = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([c,n])=>`${c}: ${n}`).join(' · ');
 
-  const marker = L.marker([lat, lng], { icon: icono })
-    .addTo(mapa)
-    .bindTooltip(`<b>${municipio}</b> — ${total} noticias<br>
-      <span style="font-size:11px;color:#666">${resumenCats}</span>`,
-      { permanent:false, direction:'top', maxWidth:220 });
+  const marker = L.marker([lat,lng],{icon:icono}).addTo(mapa)
+    .bindTooltip(`<b>${municipio}</b> — ${total} noticias<br><span style="font-size:11px;color:#666">${resumenCats}</span>`,
+    {permanent:false,direction:'top',maxWidth:220});
 
   marcadores.push(marker);
 }
@@ -393,9 +346,7 @@ function pintarNoticiasIndividuales(noticias, municipio, subregion) {
 function actualizarBreadcrumb(items) {
   const html = items.map((item, i) => {
     const sep = i > 0 ? '<span class="bc-sep">›</span>' : '';
-    if (item.activo) {
-      return `${sep}<span class="bc-item activo">${item.label}</span>`;
-    }
+    if (item.activo) return `${sep}<span class="bc-item activo">${item.label}</span>`;
     return `${sep}<span class="bc-item" onclick="${item.onclick}" style="cursor:pointer">${item.label}</span>`;
   }).join('');
   document.getElementById('breadcrumb').innerHTML = html;
