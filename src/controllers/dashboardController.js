@@ -108,7 +108,7 @@ async function getMunicipio(req, res) {
 
     // Buscamos noticias de ese municipio exacto
     const noticias = NoticiaModel.obtenerNoticias({
-      desde, hasta, municipio: municipio.toLowerCase(), modo:'antioquia', limite:100
+      desde, hasta, municipio: municipio.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''), modo:'antioquia', limite:100
     });
 
     res.json({ ok:true, municipio, total:noticias.length, noticias });

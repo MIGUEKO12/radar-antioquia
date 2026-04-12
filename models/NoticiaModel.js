@@ -42,7 +42,7 @@ function obtenerNoticias({ desde, hasta, subregion, municipio, modo, limite = 50
   if (desde)  { sql += ' AND fecha >= ?'; args.push(desde + 'T00:00:00'); }
   if (hasta)  { sql += ' AND fecha <= ?'; args.push(hasta + 'T23:59:59'); }
   if (subregion && subregion !== 'todas') { sql += ' AND subregion = ?'; args.push(subregion); }
-  if (municipio)  { sql += ' AND municipio = ?'; args.push(municipio); }
+if (municipio) { sql += ' AND municipio LIKE ?'; args.push(municipio); }
   if (modo)       { sql += ' AND modo = ?';      args.push(modo); }
 
   sql += ' ORDER BY fecha DESC LIMIT ?';
