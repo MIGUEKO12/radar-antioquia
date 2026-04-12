@@ -721,6 +721,23 @@ function verSinUbicar() {
 }
 window.verSinUbicar = verSinUbicar;
 
+function resetFiltros() {
+  if ($('fecha-desde')) $('fecha-desde').value = '';
+  if ($('fecha-hasta')) $('fecha-hasta').value = '';
+  if ($('q-antioquia')) $('q-antioquia').value = '';
+  if ($('q-libre'))     $('q-libre').value     = '';
+  Estado.terminoBusqueda = null;
+  Estado.noticiasFiltradasMapa = null;
+  document.querySelectorAll('#periodo-pills .pill').forEach(b => b.classList.remove('activo'));
+  const btnHoy = document.querySelector('#periodo-pills .pill');
+  if (btnHoy) btnHoy.classList.add('activo');
+  Estado.periodo = 'hoy';
+  cargarDashboard();
+  cargarTendenciaIndep();
+}
+window.resetFiltros = resetFiltros;
+
+
 // ================= SECCIÓN: EXPOSICIÓN GLOBAL =================
 window.setModo               = setModo;
 window.setPeriodo            = setPeriodo;

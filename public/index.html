@@ -53,10 +53,9 @@
       <button class="pill"        onclick="setPeriodo('semana',this)">Semana</button>
       <button class="pill"        onclick="setPeriodo('mes',this)">Mes</button>
     </div>
+    <button onclick="resetFiltros()" title="Limpiar filtros" style="padding:6px 10px;background:white;color:#6b7280;border:1px solid #e0e0e0;border-radius:8px;font-size:16px;cursor:pointer;transition:all 0.15s;line-height:1;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='white'">↺</button>
     <div style="border-left:1px solid #e0e0e0;height:28px;margin:0 4px;"></div>
-    <button onclick="window.toggleFicha && window.toggleFicha()" style="padding:6px 14px;background:white;color:#1b5e20;border:1px solid #1b5e20;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.background='#1b5e20';this.style.color='white'" onmouseout="this.style.background='white';this.style.color='#1b5e20'">
-      📋 Ficha técnica
-    </button>
+    <button onclick="window.toggleFicha && window.toggleFicha()" title="Ficha técnica" style="padding:6px 10px;background:white;color:#1b5e20;border:1px solid #1b5e20;border-radius:8px;font-size:16px;cursor:pointer;transition:all 0.15s;line-height:1;" onmouseover="this.style.background='#1b5e20';this.style.color='white'" onmouseout="this.style.background='white';this.style.color='#1b5e20'">📋</button>
   </div>
 </section>
 
