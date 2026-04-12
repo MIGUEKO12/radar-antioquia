@@ -112,8 +112,11 @@ function actualizarMapa(subregiones, noticias, total) {
   subregiones.forEach(s => { datosParaMapa[s.subregion] = s.total; });
   window._totalNoticias = total || 0;
   window.MapaRadar.pintarSubregiones(datosParaMapa, noticias || []);
+  // Actualizar contador sin ubicar en leyenda
+  const conSubregion = subregiones.reduce((s, m) => s + m.total, 0);
+  const sinUbicar = (total || 0) - conSubregion;
+  if ($('contador-sin-ubicar')) $('contador-sin-ubicar').textContent = sinUbicar > 0 ? sinUbicar : 0;
 }
-
 // ================= SECCIÓN: MÉTRICAS =================
 function actualizarMetricas(categorias) {
   const mapa = {};
