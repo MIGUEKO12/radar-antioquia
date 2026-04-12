@@ -97,7 +97,8 @@ function detectarUbicacion(texto) {
     }
   }
 
-  return { subregion: 'general', municipio: null };
+return { subregion: 'aburra', municipio: 'medellin' };
+
 }
 
 // ================= SECCIÓN: EXPORTACIONES =================
