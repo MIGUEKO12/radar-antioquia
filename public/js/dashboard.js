@@ -36,12 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ocultarAviso();
     cerrarModal();
     cargarDashboard();
-    cargarTendenciaIndep();
   };
 
   iniciarTooltipOP();
   cargarDashboard();
-  cargarTendenciaIndep();
 
   setInterval(() => {
     if (Estado.modo === 'antioquia' && !Estado.subregionActual) cargarDashboard();
@@ -86,7 +84,7 @@ async function cargarDashboard() {
     if (!data.ok) throw new Error(data.error);
 
     actualizarMetricas(data.resumen.porCategoria);
-    actualizarMapa(data.mapa);
+    actualizarMapa(data.mapa, data.recientes, data.resumen.total);
     actualizarClasificacion(data.resumen.porCategoria, data.resumen.total);
 
     // Guardamos todas las noticias y reseteamos el panel
@@ -96,7 +94,7 @@ async function cargarDashboard() {
     resetFiltrosBotones();
     renderNoticiasPanel();
 
-    
+    actualizarTendencia(data.tendencia);
     actualizarImpactoConModal(data.resumen.porCategoria);
 
     $('ultima-actualizacion').textContent =
@@ -260,10 +258,11 @@ function onFechaChange() {
 }
 
 // ================= SECCIÓN: ACTUALIZAR MAPA =================
-function actualizarMapa(subregiones) {
+function actualizarMapa(subregiones, noticias, total) {
   const datosParaMapa = {};
   subregiones.forEach(s => { datosParaMapa[s.subregion] = s.total; });
-  window.MapaRadar.pintarSubregiones(datosParaMapa);
+  window._totalNoticias = total || 0;
+  window.MapaRadar.pintarSubregiones(datosParaMapa, noticias || []);
 }
 
 // ================= SECCIÓN: DRILL-DOWN SUBREGIÓN =================
@@ -304,13 +303,14 @@ async function entrarSubregion(id) {
       }
     });
     const nombreSubr = data.nombre || id;
-    window.MapaRadar.pintarMunicipios(id, muniMapa, nombreSubr);
+    window.MapaRadar.pintarMunicipios(id, muniMapa, nombreSubr, data.noticias);
     actualizarNoticias(data.noticias, `Noticias — ${nombreSubr}`);
     actualizarClasificacion(data.categorias, data.total, nombreSubr);
     actualizarMetricas(data.categorias);
   } catch(err) { console.error('[Subregion]', err); }
   finally { mostrarSpinner(false); }
 }
+
 // ================= SECCIÓN: DRILL-DOWN MUNICIPIO =================
 async function entrarMunicipio(nombre, subregion) {
   mostrarSpinner(true);
@@ -346,7 +346,7 @@ function actualizarMetricas(categorias) {
   categorias.forEach(c => { mapa[c.categoria] = c.total; });
   const total = categorias.reduce((s,c) => s+c.total, 0);
 
-  // General absorbe todas las categorías que no tienen tarjeta propia
+  // General = suma de categorías sin tarjeta propia + las que ya son 'general'
   const conTarjeta = ['orden_publico','desplazamiento','homicidio','feminicidio','mineria','clima'];
   const totalGeneral = categorias
     .filter(c => !conTarjeta.includes(c.categoria))
@@ -448,6 +448,12 @@ function setPeriodo(periodo, btn) {
   Estado.periodo = periodo;
   document.querySelectorAll('#periodo-pills .pill').forEach(b => b.classList.remove('activo'));
   if (btn) btn.classList.add('activo');
+
+  // Limpiamos los inputs de fecha manual al usar los botones de período
+  // para que no interfieran con el período seleccionado
+  if ($('fecha-desde')) $('fecha-desde').value = '';
+  if ($('fecha-hasta')) $('fecha-hasta').value = '';
+
   if (Estado.terminoBusqueda && $('q-antioquia')) {
     $('q-antioquia').value = Estado.terminoBusqueda;
     buscarEnAntioquia();
@@ -583,82 +589,28 @@ function irPagina(n) {
 
 // ================= SECCIÓN: GRÁFICOS =================
 let chartTendencia=null, chartImpacto=null;
-function actualizarTendencia(datos) {
-  const ctx     = $('chart-tendencia');
-  const labels  = datos.map(d => new Date(d.dia+'T12:00:00')
-    .toLocaleDateString('es-CO',{day:'numeric',month:'short'}));
-  const valores = datos.map(d => d.total);
-  const color   = EstadoTendencia?.color || '#43a047';
 
+function actualizarTendencia(datos) {
+  const ctx    = $('chart-tendencia');
+  const labels = datos.map(d => new Date(d.dia+'T12:00:00').toLocaleDateString('es-CO',{day:'numeric',month:'short'}));
+  const valores = datos.map(d => d.total);
   if (chartTendencia) chartTendencia.destroy();
   chartTendencia = new Chart(ctx, {
     type:'line',
-    data:{ labels, datasets:[{
-      label:'Noticias', data:valores,
-      borderColor: color,
-      backgroundColor: color + '18',
-      fill:true, tension:0.35,
-      pointRadius:4, pointBackgroundColor: color, borderWidth:2
-    }]},
-    options:{
-      responsive:true,
-      plugins:{ legend:{ display:false } },
-      scales:{
-        x:{ grid:{ display:false }, ticks:{ font:{ size:11 } } },
-        y:{ grid:{ color:'rgba(0,0,0,0.05)' }, ticks:{ font:{ size:11 }, precision:0 } }
-      }
-    }
+    data:{ labels, datasets:[{ label:'Noticias',data:valores,borderColor:'#43a047',backgroundColor:'rgba(67,160,71,0.08)',fill:true,tension:0.35,pointRadius:4,pointBackgroundColor:'#43a047',borderWidth:2 }] },
+    options:{ responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:11},precision:0}}} }
   });
 }
-// Estado independiente de la gráfica de tendencia
-const EstadoTendencia = {
-  dias:      7,
-  categoria: 'todas'
-};
 
-async function cargarTendenciaIndep() {
+async function setTendencia(dias, btn) {
+  document.querySelectorAll('.periodo-pills.small .pill').forEach(b => b.classList.remove('activo'));
+  if (btn) btn.classList.add('activo');
   try {
-    const params = new URLSearchParams({
-      dias:      EstadoTendencia.dias,
-      categoria: EstadoTendencia.categoria
-    });
-    const res  = await fetch(`/api/noticias/tendencia?${params}`);
-    const data = await res.json();
-    if (!data.ok) return;
-    actualizarTendencia(data.tendencia);
-  } catch(e) { console.error('[Tendencia]', e); }
+    const res=await fetch(`/api/dashboard?periodo=${Estado.periodo}`);
+    const data=await res.json();
+    if (data.ok) actualizarTendencia(data.tendencia);
+  } catch(e){}
 }
-
-function setTendenciaIndep(dias, btn) {
-  EstadoTendencia.dias = dias;
-  document.querySelectorAll('.periodo-pills.small .pill')
-    .forEach(b => b.classList.remove('activo'));
-  if (btn) btn.classList.add('activo');
-  cargarTendenciaIndep();
-}
-
-function setTendenciaCategoria(cat, btn) {
-  EstadoTendencia.categoria = cat;
-  document.querySelectorAll('#tendencia-filtros .filtro-cat-btn')
-    .forEach(b => b.classList.remove('activo'));
-  if (btn) btn.classList.add('activo');
-
-  // Cambia el color de la línea según categoría
-  EstadoTendencia.color = {
-    todas:         '#43a047',
-    general:       '#9e9e9e',
-    orden_publico: '#e53935',
-    homicidio:     '#c62828',
-    feminicidio:   '#880e4f',
-    mineria:       '#e65100',
-    clima:         '#1565c0'
-  }[cat] || '#43a047';
-
-  cargarTendenciaIndep();
-}
-
-window.setTendenciaIndep     = setTendenciaIndep;
-window.setTendenciaCategoria = setTendenciaCategoria;
 
 // ================= SECCIÓN: MODAL CATEGORÍA =================
 const ITEMS_MODAL = 10;
@@ -808,63 +760,80 @@ document.addEventListener('keydown', e => {
 });
 
 function actualizarImpactoConModal(categorias) {
-  const ctx=($('chart-impacto'));
+  const ctx = $('chart-impacto');
   if (!ctx) return;
-  const activas=categorias.filter(c=>c.total>0);
-  const colores={ homicidio:'#c62828',feminicidio:'#880e4f',orden_publico:'#e53935',desplazamiento:'#d84315',mineria:'#e65100',clima:'#1565c0',salud:'#2e7d32',infraestructura:'#6a1b9a',general:'#9e9e9e' };
-  const nombresC={ homicidio:'Homicidio',feminicidio:'Feminicidio',orden_publico:'Orden público',desplazamiento:'Desplaz.',mineria:'Minería',clima:'Clima',salud:'Salud',infraestructura:'Infraest.',general:'General' };
-  if (chartImpacto) chartImpacto.destroy();
-  chartImpacto=new Chart(ctx,{
-    type:'doughnut',
-    data:{ labels:activas.map(c=>nombresC[c.categoria]||c.categoria), datasets:[{ data:activas.map(c=>c.total), backgroundColor:activas.map(c=>colores[c.categoria]||'#9e9e9e'), hoverOffset:10, borderWidth:2, borderColor:'#ffffff' }] },
-    options:{ responsive:true,cutout:'58%',
-      plugins:{ legend:{ position:'right',labels:{font:{size:11},boxWidth:12,padding:8},
-        onClick:(e,li)=>{ const cat=activas[li.index]?.categoria; if(cat) abrirModalCategoria(cat); }
-      }, tooltip:{ callbacks:{ label:ctx=>{ const t=ctx.parsed,s=activas.reduce((a,c)=>a+c.total,0); return ` ${t} noticias (${((t/s)*100).toFixed(1)}%) — clic para ver`; } } } },
-      onClick:(e,els)=>{ if(!els.length) return; const cat=activas[els[0].index]?.categoria; if(cat) abrirModalCategoria(cat); }
+
+  const principales = ['general','orden_publico','homicidio','feminicidio','mineria','clima'];
+  const colores = {
+    general:'#9e9e9e', orden_publico:'#e53935', homicidio:'#c62828',
+    feminicidio:'#880e4f', mineria:'#e65100', clima:'#1565c0'
+  };
+  const nombresC = {
+    general:'General', orden_publico:'Orden público', homicidio:'Homicidio',
+    feminicidio:'Feminicidio', mineria:'Minería', clima:'Clima'
+  };
+
+  // Agrupamos categorías fuera de las 6 en General
+  const mapaRaw = {};
+  categorias.forEach(c => { mapaRaw[c.categoria] = (mapaRaw[c.categoria]||0) + c.total; });
+  mapaRaw.orden_publico = (mapaRaw.orden_publico||0) + (mapaRaw.desplazamiento||0);
+  Object.keys(mapaRaw).forEach(cat => {
+    if (!principales.includes(cat) && cat !== 'desplazamiento') {
+      mapaRaw.general = (mapaRaw.general||0) + mapaRaw[cat];
     }
   });
-  ctx.style.cursor='pointer';
+
+  const activas = principales
+    .map(key => ({ categoria: key, total: mapaRaw[key]||0 }))
+    .filter(c => c.total > 0);
+
+  if (chartImpacto) chartImpacto.destroy();
+
+  chartImpacto = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: activas.map(c => nombresC[c.categoria]),
+      datasets: [{
+        data: activas.map(c => c.total),
+        backgroundColor: activas.map(c => colores[c.categoria]),
+        hoverOffset: 10, borderWidth: 2, borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true, cutout: '58%',
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { font:{ size:11 }, boxWidth:12, padding:8 },
+          onClick: (e, li) => {
+            const cat = activas[li.index]?.categoria;
+            if (cat) abrirModalCategoria(cat);
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const t = ctx.parsed;
+              const s = activas.reduce((a,c) => a+c.total, 0);
+              return ` ${t} noticias (${((t/s)*100).toFixed(1)}%) — clic para ver`;
+            }
+          }
+        }
+      },
+      onClick: (e, els) => {
+        if (!els.length) return;
+        const cat = activas[els[0].index]?.categoria;
+        if (cat) abrirModalCategoria(cat);
+      }
+    }
+  });
+  ctx.style.cursor = 'pointer';
 }
 
-// ================= SECCIÓN: UTILIDADES =================
-function contarCategoriasLocal(noticias) {
-  const conteo={};
-  noticias.forEach(n=>{ conteo[n.categoria]=(conteo[n.categoria]||0)+1; });
-  return Object.entries(conteo).map(([categoria,total])=>({categoria,total})).sort((a,b)=>b.total-a.total);
-}
-function mostrarSpinner(visible) { $('spinner').classList.toggle('oculto',!visible); }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const qLibre=$('q-libre');
-  if (qLibre) qLibre.addEventListener('keypress', e=>{ if(e.key==='Enter') ejecutarBusquedaLibre(); });
-});
-
-
-// ================= SECCIÓN: MODAL SUBCATEGORÍAS ORDEN PÚBLICO =================
-function abrirModalSubcategorias() {
-  const modal = $('modal-subcategorias');
-  if (modal) modal.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-}
-
-function cerrarModalSubcategorias() {
-  const modal = $('modal-subcategorias');
-  if (modal) modal.style.display = 'none';
-  document.body.style.overflow = '';
-}
-
-document.addEventListener('click', e => {
-  if (e.target === $('modal-subcategorias')) cerrarModalSubcategorias();
-});
-
-window.abrirModalSubcategorias  = abrirModalSubcategorias;
-window.cerrarModalSubcategorias = cerrarModalSubcategorias;
-
-// ================= SECCIÓN: EXPOSICIÓN GLOBAL =================
 window.setModo               = setModo;
 window.setPeriodo            = setPeriodo;
-window.setTendencia          = setTendenciaIndep;
+window.setTendencia          = setTendencia;
 window.ejecutarBusquedaLibre = ejecutarBusquedaLibre;
 window.buscarEnAntioquia     = buscarEnAntioquia;
 window.irPagina              = irPagina;
@@ -882,31 +851,3 @@ window.seleccionarNoticia    = seleccionarNoticia;
 window.actualizarImpactoConModal = actualizarImpactoConModal;
 window.abrirModalSinUbicar   = abrirModalSinUbicar;
 window.cerrarModal           = cerrarModal;
-
-// ================= SECCIÓN: FICHA TÉCNICA =================
-function toggleFicha() {
-  const ficha   = $('seccion-ficha');
-  const mapa    = $('seccion-mapa');
-  const graficos = $('seccion-graficos');
-  const metricas = $('metricas-section');
-
-  const visible = !ficha.classList.contains('oculto');
-
-  if (visible) {
-    // Ocultar ficha, mostrar dashboard
-    ficha.classList.add('oculto');
-    if (Estado.modo === 'antioquia') {
-      mapa.classList.remove('oculto');
-      graficos.classList.remove('oculto');
-      metricas.classList.remove('oculto');
-    }
-  } else {
-    // Mostrar ficha, ocultar dashboard
-    ficha.classList.remove('oculto');
-    mapa.classList.add('oculto');
-    graficos.classList.add('oculto');
-    metricas.classList.add('oculto');
-  }
-}
-
-window.toggleFicha = toggleFicha;

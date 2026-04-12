@@ -174,13 +174,29 @@ let nivelActual    = 'antioquia';
 let subrActual     = null;
 let marcadores     = [];
 let datosSubregion = {};
+// Guardamos noticias por subregión para determinar color
+let noticiasSubregion = {};
 
-// ================= SECCIÓN: COLOR POR TOTAL =================
-function colorPorTotal(total) {
-  if (total > 15) return '#e53935';
-  if (total > 4)  return '#fb8c00';
-  if (total > 0)  return '#43a047';
-  return '#bdbdbd';
+// ================= SECCIÓN: COLORES POR CATEGORÍA =================
+// Prioridad: homicidio > orden_publico > general
+// Colores pasteles para distinguir sin ser agresivos
+const COLOR_HOMICIDIO    = '#e57373'; // Rojo pastel
+const COLOR_ORDEN        = '#c62828'; // Rojo oscuro pastel
+const COLOR_GENERAL      = '#81c784'; // Verde pastel
+const COLOR_SIN_NOTICIAS = '#bdbdbd'; // Gris neutro
+const COLOR_SIN_UBICAR   = '#78909c'; // Gris azulado
+
+// Determina el color del marcador según las categorías presentes
+function colorPorCategorias(cats) {
+  if (!cats || Object.keys(cats).length === 0) return COLOR_SIN_NOTICIAS;
+  // Prioridad 1: homicidio o feminicidio
+  if ((cats.homicidio || 0) > 0 || (cats.feminicidio || 0) > 0) return COLOR_HOMICIDIO;
+  // Prioridad 2: orden público o desplazamiento
+  if ((cats.orden_publico || 0) > 0 || (cats.desplazamiento || 0) > 0) return COLOR_ORDEN;
+  // Solo generales u otras
+  const total = Object.values(cats).reduce((s, v) => s + v, 0);
+  if (total > 0) return COLOR_GENERAL;
+  return COLOR_SIN_NOTICIAS;
 }
 
 // ================= SECCIÓN: CREAR ÍCONO =================
@@ -207,19 +223,35 @@ function limpiarMarcadores() {
 }
 
 // ================= SECCIÓN: NIVEL 1 — SUBREGIONES =================
-function pintarSubregiones(datos) {
+// Ahora recibe también las noticias para colorear por categoría
+function pintarSubregiones(datos, noticias) {
   limpiarMarcadores();
   nivelActual = 'antioquia';
   subrActual  = null;
 
   mapa.flyTo([6.7, -75.5], 8, { duration: 0.8 });
-
   actualizarBreadcrumb([{ label: 'Antioquia', activo: true }]);
 
+  // Agrupamos categorías por subregión a partir de las noticias
+  const catsPorSubregion = {};
+  if (noticias && noticias.length > 0) {
+    noticias.forEach(n => {
+      if (!n.subregion || n.subregion === 'general') return;
+      if (!catsPorSubregion[n.subregion]) catsPorSubregion[n.subregion] = {};
+      catsPorSubregion[n.subregion][n.categoria] =
+        (catsPorSubregion[n.subregion][n.categoria] || 0) + 1;
+    });
+  }
+
+  // Calculamos sin ubicar
+  const conSubregion = Object.values(datos).reduce((s, v) => s + v, 0);
+  const sinUbicar    = (window._totalNoticias || 0) - conSubregion;
+
   Object.entries(CENTROS_SUBREGION).forEach(([id, info]) => {
-    const total  = datos[id] || 0;
-    const color  = colorPorTotal(total);
-    const icono  = crearIcono(total, color, 36);
+    const total = datos[id] || 0;
+    const cats  = catsPorSubregion[id] || {};
+    const color = total > 0 ? colorPorCategorias(cats) : COLOR_SIN_NOTICIAS;
+    const icono = crearIcono(total, color, 36);
 
     const marker = L.marker([info.lat, info.lng], { icon: icono })
       .addTo(mapa)
@@ -227,18 +259,30 @@ function pintarSubregiones(datos) {
         permanent: false, direction: 'top'
       })
       .on('click', () => {
-        // Llamamos al dashboard para que haga el drill-down
         if (window.onSubregionClick) window.onSubregionClick(id);
       });
 
     marcadores.push(marker);
   });
 
-  datosSubregion = datos;
+  // Marcador de sin ubicar siempre visible si hay noticias sin subregión
+  if (sinUbicar > 0) {
+    const icono = crearIcono(sinUbicar, COLOR_SIN_UBICAR, 32);
+    const marker = L.marker([5.5, -75.5], { icon: icono })
+      .addTo(mapa)
+      .bindTooltip(
+        `<b>Sin municipio detectado</b><br>${sinUbicar} noticias de Antioquia en general`,
+        { permanent: false, direction: 'top' }
+      );
+    marcadores.push(marker);
+  }
+
+  datosSubregion    = datos;
+  noticiasSubregion = noticias || [];
 }
 
 // ================= SECCIÓN: NIVEL 2 — MUNICIPIOS =================
-function pintarMunicipios(id, munis, nombreSubr) {
+function pintarMunicipios(id, munis, nombreSubr, noticias) {
   limpiarMarcadores();
   nivelActual = 'subregion';
   subrActual  = id;
@@ -254,17 +298,28 @@ function pintarMunicipios(id, munis, nombreSubr) {
   const coords = MUNICIPIOS_COORDS[id] || [];
   const norm   = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 
+  // Agrupamos categorías por municipio
+  const catsPorMuni = {};
+  if (noticias && noticias.length > 0) {
+    noticias.forEach(n => {
+      if (!n.municipio) return;
+      const key = norm(n.municipio);
+      if (!catsPorMuni[key]) catsPorMuni[key] = {};
+      catsPorMuni[key][n.categoria] = (catsPorMuni[key][n.categoria] || 0) + 1;
+    });
+  }
+
   coords.forEach(muni => {
     const munNorm = norm(muni.nombre);
 
-    // Búsqueda flexible: exacta normalizada, sin normalizar, o parcial
     let total = munis[munNorm] || munis[muni.nombre.toLowerCase()] || 0;
     if (!total) {
       const entrada = Object.entries(munis).find(([k]) => norm(k) === munNorm);
       if (entrada) total = entrada[1];
     }
 
-    const color = colorPorTotal(total);
+    const cats  = catsPorMuni[munNorm] || {};
+    const color = total > 0 ? colorPorCategorias(cats) : COLOR_SIN_NOTICIAS;
     const icono = crearIcono(total, color, 28);
 
     const marker = L.marker([muni.lat, muni.lng], { icon: icono })
@@ -281,7 +336,6 @@ function pintarMunicipios(id, munis, nombreSubr) {
 }
 
 // ================= SECCIÓN: NIVEL 3 — NOTICIAS INDIVIDUALES =================
-// Pinta un punto por cada noticia individual en un municipio
 function pintarNoticiasIndividuales(noticias, municipio, subregion) {
   limpiarMarcadores();
 
@@ -302,61 +356,37 @@ function pintarNoticiasIndividuales(noticias, municipio, subregion) {
 
   if (noticias.length === 0) return;
 
-  // Un solo marcador grande con el total — limpio y legible
   const total = noticias.length;
-  const color = total > 15 ? '#e53935' : total > 4 ? '#fb8c00' : '#43a047';
+  const cats  = {};
+  noticias.forEach(n => { cats[n.categoria] = (cats[n.categoria] || 0) + 1; });
+  const color = colorPorCategorias(cats);
 
   const icono = L.divIcon({
     className: '',
     iconSize:  [52, 52],
     iconAnchor:[26, 26],
     html: `<div style="
-      width:52px;height:52px;
-      background:${color};
-      border:3px solid white;
-      border-radius:50%;
+      width:52px;height:52px;background:${color};
+      border:3px solid white;border-radius:50%;
       display:flex;flex-direction:column;
       align-items:center;justify-content:center;
-      box-shadow:0 3px 10px rgba(0,0,0,0.3);
-      cursor:pointer;
-    ">
+      box-shadow:0 3px 10px rgba(0,0,0,0.3);cursor:pointer;">
       <span style="font-size:16px;font-weight:700;color:white;line-height:1">${total}</span>
       <span style="font-size:9px;color:rgba(255,255,255,0.85);line-height:1;margin-top:2px">noticias</span>
     </div>`
   });
 
-  // Agrupamos categorías para el tooltip
-  const cats = {};
-  noticias.forEach(n => { cats[n.categoria] = (cats[n.categoria]||0)+1; });
   const resumenCats = Object.entries(cats)
-    .sort((a,b) => b[1]-a[1])
-    .slice(0,3)
-    .map(([c,n]) => `${c}: ${n}`)
-    .join(' · ');
+    .sort((a,b) => b[1]-a[1]).slice(0,3)
+    .map(([c,n]) => `${c}: ${n}`).join(' · ');
 
   const marker = L.marker([lat, lng], { icon: icono })
     .addTo(mapa)
-    .bindTooltip(`
-      <b>${municipio}</b> — ${total} noticias<br>
-      <span style="font-size:11px;color:#666">${resumenCats}</span>
-    `, { permanent:false, direction:'top', maxWidth:220 });
+    .bindTooltip(`<b>${municipio}</b> — ${total} noticias<br>
+      <span style="font-size:11px;color:#666">${resumenCats}</span>`,
+      { permanent:false, direction:'top', maxWidth:220 });
 
   marcadores.push(marker);
-}
-
-// ================= SECCIÓN: COLOR POR CATEGORÍA =================
-function colorPorCategoria(cat) {
-  const colores = {
-    homicidio:     '#c62828',
-    feminicidio:   '#880e4f',
-    orden_publico: '#e53935',
-    desplazamiento:'#d84315',
-    mineria:       '#e65100',
-    clima:         '#1565c0',
-    salud:         '#2e7d32',
-    general:       '#757575'
-  };
-  return colores[cat] || '#757575';
 }
 
 // ================= SECCIÓN: BREADCRUMB =================
@@ -371,10 +401,19 @@ function actualizarBreadcrumb(items) {
   document.getElementById('breadcrumb').innerHTML = html;
 }
 
+// ================= SECCIÓN: FUNCIONES BÚSQUEDA =================
+function pintarSubregionesPorCategoria(conteo, noticias) {
+  pintarSubregiones(conteo, noticias);
+}
+
+function pintarSinUbicar(total, noticias) {
+  window._noticiassinUbicar = noticias;
+}
+
 // ================= SECCIÓN: FUNCIONES PÚBLICAS =================
 window.volverAntioquia = function() {
   if (Object.keys(datosSubregion).length > 0) {
-    pintarSubregiones(datosSubregion);
+    pintarSubregiones(datosSubregion, noticiasSubregion);
     if (window.onVolverAntioquia) window.onVolverAntioquia();
   }
 };
@@ -387,5 +426,7 @@ window.MapaRadar = {
   pintarSubregiones,
   pintarMunicipios,
   pintarNoticiasIndividuales,
-  colorPorTotal
+  pintarSubregionesPorCategoria,
+  pintarSinUbicar,
+  colorPorTotal: () => COLOR_GENERAL
 };
