@@ -1,4 +1,4 @@
-// ================= SECCIÓN: ESTADO GLOBAL =================
+ // ================= SECCIÓN: ESTADO GLOBAL =================
 const Estado = {
   modo:'antioquia', periodo:'hoy', diasTendencia:7,
   paginaActual:1, totalPaginas:1, noticiasLibre:[],
@@ -112,6 +112,19 @@ function actualizarMapa(subregiones, noticias, total) {
   subregiones.forEach(s => { datosParaMapa[s.subregion] = s.total; });
   window._totalNoticias = total || 0;
   window.MapaRadar.pintarSubregiones(datosParaMapa, noticias || []);
+
+  const conSubregion = subregiones.reduce((s, m) => s + m.total, 0);
+  const sinUbicar    = (total || 0) - conSubregion;
+  const btnSin       = $('btn-sin-ubicar');
+  if (btnSin) {
+    if (sinUbicar > 0) {
+      const cont = $('contador-sin-ubicar');
+      if (cont) cont.textContent = sinUbicar;
+      btnSin.style.display = 'block';
+    } else {
+      btnSin.style.display = 'none';
+    }
+  }
 }
 
 // ================= SECCIÓN: MÉTRICAS =================
@@ -119,15 +132,16 @@ function actualizarMetricas(categorias) {
   const mapa = {};
   categorias.forEach(c => { mapa[c.categoria] = c.total; });
   const total = categorias.reduce((s,c) => s+c.total, 0);
-  const conTarjeta = ['orden_publico','desplazamiento','homicidio','feminicidio','mineria','clima'];
+  const conTarjeta = ['orden_publico','desplazamiento','homicidio','feminicidio','mineria','clima','violencia_politica'];
   const totalGeneral = categorias.filter(c => !conTarjeta.includes(c.categoria)).reduce((s,c) => s+c.total, 0);
   if ($('m-total')) $('m-total').textContent = total;
   if ($('m-gen'))   $('m-gen').textContent   = totalGeneral;
   if ($('m-op'))    $('m-op').textContent    = (mapa.orden_publico||0)+(mapa.desplazamiento||0);
-  if ($('m-hom'))   $('m-hom').textContent   = mapa.homicidio   || 0;
-  if ($('m-fem'))   $('m-fem').textContent   = mapa.feminicidio || 0;
-  if ($('m-min'))   $('m-min').textContent   = mapa.mineria     || 0;
-  if ($('m-cli'))   $('m-cli').textContent   = mapa.clima       || 0;
+  if ($('m-hom'))   $('m-hom').textContent   = mapa.homicidio          || 0;
+  if ($('m-fem'))   $('m-fem').textContent   = mapa.feminicidio         || 0;
+  if ($('m-min'))   $('m-min').textContent   = mapa.mineria             || 0;
+  if ($('m-cli'))   $('m-cli').textContent   = mapa.clima               || 0;
+  if ($('m-vp'))    $('m-vp').textContent    = mapa.violencia_politica  || 0;
 }
 
 // ================= SECCIÓN: CLASIFICACIÓN =================
@@ -136,12 +150,13 @@ function actualizarClasificacion(categorias, totalGeneral, contexto = null) {
     $('clasificacion-titulo').textContent = contexto ? `Clasificación — ${contexto}` : 'Clasificación de noticias';
 
   const config = [
-    { key:'general',       nombre:'General',      color:'#757575' },
-    { key:'orden_publico', nombre:'Orden público', color:'#e53935', infoBtn:true },
-    { key:'homicidio',     nombre:'Homicidio',     color:'#c62828' },
-    { key:'feminicidio',   nombre:'Feminicidio',   color:'#880e4f' },
-    { key:'mineria',       nombre:'Minería',       color:'#e65100' },
-    { key:'clima',         nombre:'Clima',         color:'#1565c0' },
+    { key:'general',            nombre:'General',            color:'#757575' },
+    { key:'orden_publico',      nombre:'Orden público',      color:'#e53935', infoBtn:true },
+    { key:'homicidio',          nombre:'Homicidio',          color:'#c62828' },
+    { key:'feminicidio',        nombre:'Feminicidio',        color:'#880e4f' },
+    { key:'mineria',            nombre:'Minería',            color:'#e65100' },
+    { key:'clima',              nombre:'Clima',              color:'#1565c0' },
+    { key:'violencia_politica', nombre:'Violencia política', color:'#6a1b9a' },
   ];
 
   const catMap = {};
@@ -170,7 +185,7 @@ function filtrarPorCategoria(cat) {
   Estado.filtroCatPanel = cat;
   Estado.paginaPanel    = 0;
   document.querySelectorAll('.metrica-card').forEach(c => c.classList.remove('activa-filtro'));
-  const idx = ['todas','general','orden_publico','homicidio','feminicidio','mineria','clima'];
+  const idx = ['todas','general','orden_publico','homicidio','feminicidio','mineria','clima','violencia_politica'];
   const i   = idx.indexOf(cat);
   if (i >= 0) { const cards = document.querySelectorAll('.metrica-card'); if (cards[i]) cards[i].classList.add('activa-filtro'); }
   document.querySelectorAll('.filtro-cat-btn').forEach(b => {
@@ -196,6 +211,9 @@ function resetFiltrosBotones() {
 }
 
 // ================= SECCIÓN: PANEL NOTICIAS =================
+const BADGES     = { homicidio:'badge-rojo',feminicidio:'badge-rosa',orden_publico:'badge-rojo',desplazamiento:'badge-rojo',mineria:'badge-amber',clima:'badge-azul',salud:'badge-verde',violencia_politica:'badge-morado',general:'badge-gris' };
+const NOMBRES_C  = { homicidio:'Homicidio',feminicidio:'Feminicidio',orden_publico:'Orden público',desplazamiento:'Desplaz.',mineria:'Minería',clima:'Clima',salud:'Salud',violencia_politica:'Viol. política',general:'General' };
+
 function renderNoticiasPanel() {
   const fuente = Estado.todasNoticiasPanel;
   if (Estado.filtroCatPanel === 'todas') {
@@ -230,15 +248,13 @@ function navegarNoticias(dir) {
 
 function renderListaNoticias(noticias, contenedor) {
   if (!contenedor) return;
-  const badges     = { homicidio:'badge-rojo',feminicidio:'badge-rosa',orden_publico:'badge-rojo',desplazamiento:'badge-rojo',mineria:'badge-amber',clima:'badge-azul',salud:'badge-verde',general:'badge-gris' };
-  const nombresCat = { homicidio:'Homicidio',feminicidio:'Feminicidio',orden_publico:'Orden público',desplazamiento:'Desplaz.',mineria:'Minería',clima:'Clima',salud:'Salud',general:'General' };
   if (!noticias || noticias.length === 0) {
     contenedor.innerHTML = '<p style="color:#9e9e9e;font-size:12px;padding:12px 0">Sin noticias para este filtro.</p>';
     return;
   }
   contenedor.innerHTML = noticias.map(n => {
-    const badge  = badges[n.categoria] || 'badge-gris';
-    const catNom = nombresCat[n.categoria] || n.categoria;
+    const badge  = BADGES[n.categoria]    || 'badge-gris';
+    const catNom = NOMBRES_C[n.categoria] || n.categoria;
     const fecha  = new Date(n.fecha).toLocaleDateString('es-CO', { day:'numeric',month:'short',hour:'2-digit',minute:'2-digit' });
     const muni   = n.municipio ? `<span class="noticia-mun">${n.municipio}</span>` : '';
     return `<div class="noticia-item">
@@ -415,11 +431,9 @@ function ocultarAviso() {
 // ================= SECCIÓN: MODAL SIN UBICAR =================
 function abrirModalSinUbicar() {
   const noticias = window._noticiassinUbicar || [];
-  const badges   = { homicidio:'badge-rojo',feminicidio:'badge-rosa',orden_publico:'badge-rojo',desplazamiento:'badge-rojo',mineria:'badge-amber',clima:'badge-azul',salud:'badge-verde',general:'badge-gris' };
-  const nombresC = { homicidio:'Homicidio',feminicidio:'Feminicidio',orden_publico:'Orden público',desplazamiento:'Desplaz.',mineria:'Minería',clima:'Clima',salud:'Salud',general:'General' };
   const html = noticias.map(n => {
-    const badge = badges[n.categoria]||'badge-gris';
-    const cat   = nombresC[n.categoria]||n.categoria;
+    const badge = BADGES[n.categoria]   ||'badge-gris';
+    const cat   = NOMBRES_C[n.categoria]||n.categoria;
     const fecha = new Date(n.fecha).toLocaleDateString('es-CO',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
     return `<div class="modal-noticia-item"><div class="modal-noticia-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div><div class="modal-noticia-meta"><span class="badge ${badge}">${cat}</span><span class="noticia-fecha">${fecha}</span></div></div>`;
   }).join('');
@@ -490,11 +504,9 @@ function renderPaginaLibre() {
   const pagina = Estado.noticiasLibre.slice(inicio, fin);
   const total  = Estado.noticiasLibre.length;
   $('libre-resumen').textContent = `${total} noticias — mostrando ${inicio+1}–${Math.min(fin,total)}`;
-  const badges   = { homicidio:'badge-rojo',feminicidio:'badge-rosa',orden_publico:'badge-rojo',desplazamiento:'badge-rojo',mineria:'badge-amber',clima:'badge-azul',salud:'badge-verde',general:'badge-gris' };
-  const nombresC = { homicidio:'Homicidio',feminicidio:'Feminicidio',orden_publico:'Orden público',desplazamiento:'Desplaz.',mineria:'Minería',clima:'Clima',salud:'Salud',general:'General' };
   $('libre-lista').innerHTML = pagina.map(n => {
-    const badge = badges[n.categoria]||'badge-gris';
-    const cat   = nombresC[n.categoria]||n.categoria;
+    const badge = BADGES[n.categoria]   ||'badge-gris';
+    const cat   = NOMBRES_C[n.categoria]||n.categoria;
     const fecha = new Date(n.fecha).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
     const muni  = n.municipio ? `<span class="noticia-mun">${n.municipio}</span>` : '';
     return `<div class="noticia-libre"><div class="nl-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div><div class="nl-meta"><span class="badge ${badge}">${cat}</span>${muni}<span class="noticia-fecha">${fecha}</span></div></div>`;
@@ -524,7 +536,7 @@ function irPagina(n) {
 let chartTendencia=null, chartImpacto=null;
 
 function actualizarTendencia(datos) {
-  const ctx     = $('chart-tendencia');
+  const ctx = $('chart-tendencia');
   if (!ctx) return;
   const labels  = datos.map(d => new Date(d.dia+'T12:00:00').toLocaleDateString('es-CO',{day:'numeric',month:'short'}));
   const valores = datos.map(d => d.total);
@@ -560,7 +572,11 @@ function setTendenciaCategoria(cat, btn) {
   EstadoTendencia.categoria = cat;
   document.querySelectorAll('#tendencia-filtros .filtro-cat-btn').forEach(b => b.classList.remove('activo'));
   if (btn) btn.classList.add('activo');
-  EstadoTendencia.color = { todas:'#43a047',general:'#9e9e9e',orden_publico:'#e53935',homicidio:'#c62828',feminicidio:'#880e4f',mineria:'#e65100',clima:'#1565c0' }[cat] || '#43a047';
+  EstadoTendencia.color = {
+    todas:'#43a047', general:'#9e9e9e', orden_publico:'#e53935',
+    homicidio:'#c62828', feminicidio:'#880e4f', mineria:'#e65100',
+    clima:'#1565c0', violencia_politica:'#6a1b9a'
+  }[cat] || '#43a047';
   cargarTendenciaIndep();
 }
 
@@ -571,13 +587,15 @@ window.setTendenciaCategoria = setTendenciaCategoria;
 function actualizarImpactoConModal(categorias) {
   const ctx = $('chart-impacto');
   if (!ctx) return;
-  const principales = ['general','orden_publico','homicidio','feminicidio','mineria','clima'];
-  const colores  = { general:'#9e9e9e',orden_publico:'#e53935',homicidio:'#c62828',feminicidio:'#880e4f',mineria:'#e65100',clima:'#1565c0' };
-  const nombresC = { general:'General',orden_publico:'Orden público',homicidio:'Homicidio',feminicidio:'Feminicidio',mineria:'Minería',clima:'Clima' };
+  const principales = ['general','orden_publico','homicidio','feminicidio','mineria','clima','violencia_politica'];
+  const colores  = { general:'#9e9e9e',orden_publico:'#e53935',homicidio:'#c62828',feminicidio:'#880e4f',mineria:'#e65100',clima:'#1565c0',violencia_politica:'#6a1b9a' };
+  const nombresC = { general:'General',orden_publico:'Orden público',homicidio:'Homicidio',feminicidio:'Feminicidio',mineria:'Minería',clima:'Clima',violencia_politica:'Viol. política' };
   const mapaRaw = {};
   categorias.forEach(c => { mapaRaw[c.categoria] = (mapaRaw[c.categoria]||0)+c.total; });
   mapaRaw.orden_publico = (mapaRaw.orden_publico||0)+(mapaRaw.desplazamiento||0);
-  Object.keys(mapaRaw).forEach(cat => { if (!principales.includes(cat) && cat!=='desplazamiento') mapaRaw.general=(mapaRaw.general||0)+mapaRaw[cat]; });
+  Object.keys(mapaRaw).forEach(cat => {
+    if (!principales.includes(cat) && cat!=='desplazamiento') mapaRaw.general=(mapaRaw.general||0)+mapaRaw[cat];
+  });
   const activas = principales.map(key => ({ categoria:key, total:mapaRaw[key]||0 })).filter(c => c.total>0);
   if (chartImpacto) chartImpacto.destroy();
   chartImpacto = new Chart(ctx, {
@@ -595,9 +613,9 @@ function actualizarImpactoConModal(categorias) {
 // ================= SECCIÓN: MODAL CATEGORÍA =================
 const ITEMS_MODAL = 10;
 const modalState  = { noticias:[],filtradas:[],paginaModal:1,totalPaginasM:1,actual:0,categoria:'',color:'' };
-const COLORES_CAT = { homicidio:'#c62828',feminicidio:'#880e4f',orden_publico:'#e53935',desplazamiento:'#d84315',mineria:'#e65100',clima:'#1565c0',salud:'#2e7d32',general:'#757575' };
-const NOMBRES_CAT = { homicidio:'Homicidio',feminicidio:'Feminicidio',orden_publico:'Orden público',desplazamiento:'Desplazamiento',mineria:'Minería',clima:'Clima',salud:'Salud',general:'General' };
-const BADGES_CAT  = { homicidio:'badge-rojo',feminicidio:'badge-rosa',orden_publico:'badge-rojo',desplazamiento:'badge-rojo',mineria:'badge-amber',clima:'badge-azul',salud:'badge-verde',general:'badge-gris' };
+const COLORES_CAT = { homicidio:'#c62828',feminicidio:'#880e4f',orden_publico:'#e53935',desplazamiento:'#d84315',mineria:'#e65100',clima:'#1565c0',salud:'#2e7d32',violencia_politica:'#6a1b9a',general:'#757575' };
+const NOMBRES_CAT = { homicidio:'Homicidio',feminicidio:'Feminicidio',orden_publico:'Orden público',desplazamiento:'Desplazamiento',mineria:'Minería',clima:'Clima',salud:'Salud',violencia_politica:'Violencia política',general:'General' };
+const BADGES_CAT  = { homicidio:'badge-rojo',feminicidio:'badge-rosa',orden_publico:'badge-rojo',desplazamiento:'badge-rojo',mineria:'badge-amber',clima:'badge-azul',salud:'badge-verde',violencia_politica:'badge-morado',general:'badge-gris' };
 
 async function abrirModalCategoria(categoria) {
   const color  = COLORES_CAT[categoria]||'#757575';
@@ -721,12 +739,13 @@ function verSinUbicar() {
 }
 window.verSinUbicar = verSinUbicar;
 
+// ================= SECCIÓN: RESET FILTROS =================
 function resetFiltros() {
   if ($('fecha-desde')) $('fecha-desde').value = '';
   if ($('fecha-hasta')) $('fecha-hasta').value = '';
   if ($('q-antioquia')) $('q-antioquia').value = '';
   if ($('q-libre'))     $('q-libre').value     = '';
-  Estado.terminoBusqueda = null;
+  Estado.terminoBusqueda       = null;
   Estado.noticiasFiltradasMapa = null;
   document.querySelectorAll('#periodo-pills .pill').forEach(b => b.classList.remove('activo'));
   const btnHoy = document.querySelector('#periodo-pills .pill');
@@ -736,7 +755,6 @@ function resetFiltros() {
   cargarTendenciaIndep();
 }
 window.resetFiltros = resetFiltros;
-
 
 // ================= SECCIÓN: EXPOSICIÓN GLOBAL =================
 window.setModo               = setModo;

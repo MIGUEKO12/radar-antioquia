@@ -91,6 +91,10 @@
       <span class="metrica-label">Clima</span>
       <span class="metrica-val" id="m-cli">—</span>
     </div>
+    <div class="metrica-card violencia-pol" onclick="filtrarPorCategoria('violencia_politica')">
+      <span class="metrica-label">Violencia política <span style="font-size:10px;font-weight:400;opacity:0.8">(Colombia)</span></span>
+      <span class="metrica-val" id="m-vp">—</span>
+    </div>
   </div>
 </section>
 
@@ -141,6 +145,7 @@
           <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('mineria',this)">Minería</button>
           <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('clima',this)">Clima</button>
           <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('general',this)">General</button>
+          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('violencia_politica',this)">Viol. política</button>
         </div>
         <div class="noticias-nav">
           <span class="noticias-nav-info" id="not-nav-info">— de —</span>
@@ -175,6 +180,7 @@
         <button class="filtro-cat-btn" onclick="setTendenciaCategoria('feminicidio',this)">Feminicidio</button>
         <button class="filtro-cat-btn" onclick="setTendenciaCategoria('mineria',this)">Minería</button>
         <button class="filtro-cat-btn" onclick="setTendenciaCategoria('clima',this)">Clima</button>
+        <button class="filtro-cat-btn" onclick="setTendenciaCategoria('violencia_politica',this)">Viol. política</button>
       </div>
       <canvas id="chart-tendencia" height="110"></canvas>
     </div>

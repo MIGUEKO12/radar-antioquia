@@ -12,6 +12,14 @@ const RSS_BASE = 'https://news.google.com/rss/search';
 // Búsquedas automáticas que se ejecutan en cada ciclo del cron para Antioquia
 // Cubren los temas más relevantes para la Gobernación
 const QUERIES_ANTIOQUIA = [
+  // Violencia política
+'violencia política Colombia',
+'candidato amenazado Colombia',
+'atentado candidato Colombia',
+'sede campaña atacada Colombia',
+'intimidacion electoral Colombia',
+'lider politico asesinado Colombia',
+
   // General departamento
   'Antioquia Colombia',
   'Gobernación Antioquia',

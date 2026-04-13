@@ -1,7 +1,4 @@
 // ================= SECCIÓN: DICCIONARIO DE CATEGORÍAS =================
-// Cada categoría tiene un array de palabras clave que la identifican.
-// El orden importa: las categorías más específicas van primero.
-
 const CATEGORIAS = {
 
   // Violencia física — máxima prioridad por impacto en convivencia
@@ -16,6 +13,24 @@ const CATEGORIAS = {
     'feminicidio', 'femicidio', 'mujer asesinada', 'mujer muerta',
     'violencia de genero', 'violencia de género', 'violencia contra la mujer',
     'agresion a mujer', 'agresión a mujer', 'pareja la mato', 'esposo la mato'
+  ],
+
+  // Violencia política — amenazas y ataques a actores políticos y electorales
+  violencia_politica: [
+    'violencia politica', 'violencia política',
+    'amenaza candidato', 'amenaza a candidato', 'amenazaron candidato',
+    'atentado candidato', 'atentado contra candidato',
+    'asesinato candidato', 'candidato asesinado', 'candidato muerto',
+    'candidato amenazado', 'candidatos amenazados',
+    'sede campaña', 'sede de campaña', 'daño sede', 'ataque sede',
+    'publicidad electoral', 'propaganda electoral', 'vallas destruidas',
+    'intimidacion electoral', 'intimidación electoral',
+    'lider politico', 'líder político', 'lider social amenazado',
+    'concejal amenazado', 'alcalde amenazado', 'congresista amenazado',
+    'diputado amenazado', 'politico amenazado', 'político amenazado',
+    'elecciones violencia', 'violencia electoral',
+    'campana politica', 'campaña política', 'ataque politico', 'ataque político',
+    'candidato herido', 'atentan contra', 'panfleto amenaza'
   ],
 
   // Orden público — conflicto armado y seguridad territorial
@@ -42,7 +57,7 @@ const CATEGORIAS = {
     'carbón', 'carbon', 'oro', 'plata', 'socavon', 'socavón'
   ],
 
-  // Desastres naturales y clima — Antioquia es muy vulnerable
+  // Desastres naturales y clima
   clima: [
     'lluvia', 'inundacion', 'inundación', 'derrumbe', 'deslizamiento',
     'avalancha', 'vendaval', 'granizada', 'creciente', 'rio crecido',
@@ -51,7 +66,7 @@ const CATEGORIAS = {
     'sequia', 'sequía', 'incendio forestal'
   ],
 
-  // Salud pública — epidemias, hospitales, servicios
+  // Salud pública
   salud: [
     'epidemia', 'brote', 'contagio', 'hospital', 'clinica', 'clínica',
     'dengue', 'malaria', 'paludismo', 'intoxicacion', 'intoxicación',
@@ -59,7 +74,7 @@ const CATEGORIAS = {
     'emergencia sanitaria', 'muertes por', 'fallecidos por'
   ],
 
-  // Infraestructura — vías, servicios, obras
+  // Infraestructura
   infraestructura: [
     'via cerrada', 'vía cerrada', 'carretera bloqueada', 'puente caido',
     'puente caído', 'obras', 'pavimentacion', 'pavimentación',
@@ -69,34 +84,24 @@ const CATEGORIAS = {
 };
 
 // ================= SECCIÓN: FUNCIÓN CLASIFICADORA =================
-/**
- * Clasifica una noticia en una categoría según su título.
- * Retorna la primera categoría que haga match (orden de prioridad importa).
- * @param {string} titulo - Título de la noticia a clasificar
- * @returns {string} Nombre de la categoría detectada o 'general'
- */
 function clasificarNoticia(titulo) {
-  // Normalizamos el texto: minúsculas y sin tildes para comparación robusta
   const textoNorm = titulo
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, ''); // Elimina diacríticos
+    .replace(/[\u0300-\u036f]/g, '');
 
-  // Iteramos categorías en orden de definición (más específicas primero)
   for (const [categoria, palabras] of Object.entries(CATEGORIAS)) {
     for (const palabra of palabras) {
-      // Normalizamos también la palabra clave
       const palabraNorm = palabra
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
-
       if (textoNorm.includes(palabraNorm)) {
-        return categoria; // Retornamos la primera categoría que haga match
+        return categoria;
       }
     }
   }
 
-  return 'general'; // Si ninguna categoría hace match, es noticia general
+  return 'general';
 }
 
 // ================= SECCIÓN: EXPORTACIONES =================
