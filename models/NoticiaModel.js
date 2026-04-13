@@ -35,7 +35,7 @@ function insertarNoticia({ titulo, link, fecha, subregion, municipio, categoria,
 }
 
 // ================= SECCIÓN: CONSULTA PRINCIPAL =================
-function obtenerNoticias({ desde, hasta, subregion, municipio, modo, limite = 500 }) {
+function obtenerNoticias({ desde, hasta, subregion, municipio, modo, limite = 2000 }) {
   let sql    = 'SELECT * FROM noticias WHERE 1=1';
   const args = [];
 

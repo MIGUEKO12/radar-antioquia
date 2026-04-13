@@ -68,7 +68,7 @@ async function getSubregion(req, res) {
     const { id }           = req.params;
     const { desde, hasta } = resolverPeriodo(req.query);
 
-    const noticias   = NoticiaModel.obtenerNoticias({ desde, hasta, subregion:id, modo:'antioquia', limite:200 });
+    const noticias   = NoticiaModel.obtenerNoticias({ desde, hasta, subregion:id, modo:'antioquia', limite:2000 });
     const municipios = NoticiaModel.contarPorMunicipio({ subregion:id, desde, hasta });
     const categorias = NoticiaModel.contarPorCategoria({ desde, hasta, modo:'antioquia' });
 
@@ -108,7 +108,7 @@ async function getMunicipio(req, res) {
 
     // Buscamos noticias de ese municipio exacto
     const noticias = NoticiaModel.obtenerNoticias({
-      desde, hasta, municipio: municipio.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''), modo:'antioquia', limite:100
+      desde, hasta, municipio: municipio.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''), modo:'antioquia', limite:2000
     });
 
     res.json({ ok:true, municipio, total:noticias.length, noticias });
