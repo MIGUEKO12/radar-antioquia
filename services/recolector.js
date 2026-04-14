@@ -83,13 +83,17 @@ const QUERIES_ANTIOQUIA = [
   'retroexcavadora Antioquia',
 
   // ── CLIMA Y DESASTRES ─────────────────────────────────────────────────────
-  'inundación Antioquia', 'deslizamiento Antioquia',
-  'emergencia Antioquia', 'avalancha Antioquia', 'lluvia Antioquia',
+  'lluvia', 'inundacion', 'inundación', 'derrumbe', 'deslizamiento',
+'avalancha', 'vendaval', 'granizada', 'creciente', 'rio crecido',
+'río crecido', 'desbordamiento', 'alerta roja', 'alerta amarilla',
 
   // ── VIOLENCIA POLÍTICA ────────────────────────────────────────────────────
   'violencia política Colombia', 'candidato amenazado Colombia',
   'atentado candidato Colombia', 'líder político amenazado Colombia',
-
+  'amenaza directa candidato', 'amenazas directas candidatos',
+'preocupacion candidatos', 'preocupación candidatos',
+'amenaza a candidatos', 'candidatos en riesgo',
+'atentado contra candidato', 'seguridad candidatos',
   // ── SOCIAL ────────────────────────────────────────────────────────────────
   'salud Antioquia', 'educación Antioquia', 'infraestructura Antioquia'
 ];
