@@ -8,36 +8,38 @@ const CATEGORIAS = {
     'sicario', 'disparos', 'mató', 'mataron', 'ejecutado'
   ],
 
-  // Violencia de género — indicador clave para políticas de convivencia
+  // Violencia de género
   feminicidio: [
     'feminicidio', 'femicidio', 'mujer asesinada', 'mujer muerta',
     'violencia de genero', 'violencia de género', 'violencia contra la mujer',
     'agresion a mujer', 'agresión a mujer', 'pareja la mato', 'esposo la mato'
   ],
 
-  // Violencia política — amenazas y ataques a actores políticos y electorales
+  // Violencia política — frases exactas
   violencia_politica: [
     'violencia politica', 'violencia política',
     'amenaza candidato', 'amenaza a candidato', 'amenazaron candidato',
+    'amenazas a candidato', 'amenazas candidatos', 'amenaza a candidatos',
+    'amenaza directa candidato', 'amenazas directas candidatos',
     'atentado candidato', 'atentado contra candidato',
     'asesinato candidato', 'candidato asesinado', 'candidato muerto',
     'candidato amenazado', 'candidatos amenazados',
-    'sede campaña', 'sede de campaña', 'daño sede', 'ataque sede',
+    'ex candidato amenazado', 'amenazar candidato', 'amenazar a candidato',
+    'acusado amenazar candidato', 'candidatos en riesgo',
+    'sede campaña', 'sede de campaña', 'daño sede campaña', 'ataque sede campaña',
     'publicidad electoral', 'propaganda electoral', 'vallas destruidas',
     'intimidacion electoral', 'intimidación electoral',
-    'lider politico', 'líder político', 'lider social amenazado',
+    'lider politico amenazado', 'líder político amenazado',
+    'lider social amenazado', 'líder social amenazado',
     'concejal amenazado', 'alcalde amenazado', 'congresista amenazado',
     'diputado amenazado', 'politico amenazado', 'político amenazado',
+    'senador amenazado', 'representante amenazado',
     'elecciones violencia', 'violencia electoral',
-    'campana politica', 'campaña política', 'ataque politico', 'ataque político',
-    'candidato herido', 'atentan contra', 'panfleto amenaza', 
-    'amenaza a candidatos', 'amenazas a candidatos',
-'amenaza directa candidato', 'amenazas directas candidatos',
-'candidatos en riesgo', 'seguridad candidatos',
-'preocupacion candidatos', 'preocupación candidatos',
-'ex candidato amenazado', 'amenazar candidato',
-'amenazas candidato', 'acusado amenazar candidato',
-    
+    'campana politica', 'campaña política atacada',
+    'ataque politico', 'ataque político',
+    'candidato herido', 'atentan contra candidato',
+    'panfleto amenaza candidato', 'seguridad candidatos',
+    'preocupacion candidatos', 'preocupación candidatos'
   ],
 
   // Orden público — conflicto armado y seguridad territorial
@@ -50,29 +52,29 @@ const CATEGORIAS = {
     'disidencias', 'grupo armado', 'amenaza', 'reclutamiento'
   ],
 
-  // Desplazamiento — crisis humanitaria
+  // Desplazamiento
   desplazamiento: [
     'desplazamiento', 'desplazados', 'desplazamiento masivo',
     'familias huyen', 'comunidad abandona', 'éxodo', 'refugiados'
   ],
 
-  // Minería — legal e ilegal, impacto ambiental y económico
+  // Minería
   mineria: [
     'mineria', 'minería', 'minero', 'mina de oro', 'extraccion',
     'extracción', 'dragas', 'retroexcavadora', 'mineria ilegal',
     'minería ilegal', 'accidente minero', 'derrumbe en mina',
-    'carbón', 'carbon', 'oro', 'plata', 'socavon', 'socavón'
+    'carbón', 'carbon', 'socavon', 'socavón'
   ],
 
-  // Desastres naturales y clima
+  // Clima y desastres
   clima: [
     'lluvia', 'inundacion', 'inundación', 'derrumbe', 'deslizamiento',
     'avalancha', 'vendaval', 'granizada', 'creciente', 'rio crecido',
-    'río crecido', 'alerta roja', 'alerta amarilla', 'emergencia climatica',
+    'río crecido', 'desbordamiento', 'desborde', 'rio desbordado',
+    'río desbordado', 'quebrada desbordada', 'arroyo desbordado',
+    'alerta roja', 'alerta amarilla', 'emergencia climatica',
     'emergencia climática', 'desastre natural', 'temporada de lluvias',
-    'sequia', 'sequía', 'incendio forestal',
-    'desbordamiento', 'desborde', 'rio desbordado', 'río desbordado',
-'quebrada desbordada', 'arroyo desbordado',
+    'sequia', 'sequía', 'incendio forestal'
   ],
 
   // Salud pública
@@ -92,6 +94,25 @@ const CATEGORIAS = {
   ]
 };
 
+// ================= SECCIÓN: COMBINACIONES VIOLENCIA POLÍTICA =================
+// Palabras que al combinarse indican violencia política
+const PALABRAS_AMENAZA = [
+  'amenaza', 'amenazas', 'amenazar', 'amenazado', 'amenazaron',
+  'atentado', 'atentan', 'atacaron', 'acusado'
+];
+
+const PALABRAS_ACTOR_POLITICO = [
+  'candidato', 'candidatos', 'candidata', 'candidatas',
+  'politico', 'político', 'politica', 'política',
+  'congresista', 'senador', 'senadora',
+  'representante', 'alcalde', 'alcaldesa',
+  'concejal', 'concejala', 'diputado', 'diputada',
+  'gobernador', 'gobernadora',
+  'lider politico', 'líder político',
+  'lider social', 'líder social',
+  'ex candidato', 'excandidato'
+];
+
 // ================= SECCIÓN: FUNCIÓN CLASIFICADORA =================
 function clasificarNoticia(titulo) {
   const textoNorm = titulo
@@ -99,14 +120,40 @@ function clasificarNoticia(titulo) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
-  for (const [categoria, palabras] of Object.entries(CATEGORIAS)) {
-    for (const palabra of palabras) {
-      const palabraNorm = palabra
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
-      if (textoNorm.includes(palabraNorm)) {
-        return categoria;
-      }
+  // ── PASO 1: Homicidio tiene máxima prioridad ──────────────────────────────
+  for (const palabra of CATEGORIAS.homicidio) {
+    const pNorm = palabra.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (textoNorm.includes(pNorm)) return 'homicidio';
+  }
+
+  // ── PASO 2: Feminicidio segunda prioridad ─────────────────────────────────
+  for (const palabra of CATEGORIAS.feminicidio) {
+    const pNorm = palabra.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (textoNorm.includes(pNorm)) return 'feminicidio';
+  }
+
+  // ── PASO 3: Violencia política por COMBINACIÓN ───────────────────────────
+  // Si el título tiene amenaza/atentado + actor político = violencia política
+  const tieneAmenaza = PALABRAS_AMENAZA.some(p =>
+    textoNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+  );
+  const tieneActor = PALABRAS_ACTOR_POLITICO.some(p =>
+    textoNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+  );
+  if (tieneAmenaza && tieneActor) return 'violencia_politica';
+
+  // ── PASO 4: Violencia política por FRASE EXACTA ──────────────────────────
+  for (const palabra of CATEGORIAS.violencia_politica) {
+    const pNorm = palabra.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (textoNorm.includes(pNorm)) return 'violencia_politica';
+  }
+
+  // ── PASO 5: Resto de categorías en orden ─────────────────────────────────
+  const restoCategorias = ['orden_publico','desplazamiento','mineria','clima','salud','infraestructura'];
+  for (const cat of restoCategorias) {
+    for (const palabra of CATEGORIAS[cat]) {
+      const pNorm = palabra.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (textoNorm.includes(pNorm)) return cat;
     }
   }
 
