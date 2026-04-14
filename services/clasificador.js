@@ -30,7 +30,14 @@ const CATEGORIAS = {
     'diputado amenazado', 'politico amenazado', 'político amenazado',
     'elecciones violencia', 'violencia electoral',
     'campana politica', 'campaña política', 'ataque politico', 'ataque político',
-    'candidato herido', 'atentan contra', 'panfleto amenaza'
+    'candidato herido', 'atentan contra', 'panfleto amenaza', 
+    'amenaza a candidatos', 'amenazas a candidatos',
+'amenaza directa candidato', 'amenazas directas candidatos',
+'candidatos en riesgo', 'seguridad candidatos',
+'preocupacion candidatos', 'preocupación candidatos',
+'ex candidato amenazado', 'amenazar candidato',
+'amenazas candidato', 'acusado amenazar candidato',
+    
   ],
 
   // Orden público — conflicto armado y seguridad territorial
@@ -63,7 +70,9 @@ const CATEGORIAS = {
     'avalancha', 'vendaval', 'granizada', 'creciente', 'rio crecido',
     'río crecido', 'alerta roja', 'alerta amarilla', 'emergencia climatica',
     'emergencia climática', 'desastre natural', 'temporada de lluvias',
-    'sequia', 'sequía', 'incendio forestal'
+    'sequia', 'sequía', 'incendio forestal',
+    'desbordamiento', 'desborde', 'rio desbordado', 'río desbordado',
+'quebrada desbordada', 'arroyo desbordado',
   ],
 
   // Salud pública
