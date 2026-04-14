@@ -8,30 +8,41 @@ const CATEGORIAS = {
     'sicario', 'disparos', 'mató', 'mataron', 'ejecutado'
   ],
 
-  // Violencia de género — indicador clave para políticas de convivencia
+  // Violencia de género
   feminicidio: [
     'feminicidio', 'femicidio', 'mujer asesinada', 'mujer muerta',
     'violencia de genero', 'violencia de género', 'violencia contra la mujer',
     'agresion a mujer', 'agresión a mujer', 'pareja la mato', 'esposo la mato'
   ],
 
-  // Violencia política — amenazas y ataques a actores políticos y electorales
+  // Violencia política — VA ANTES DE ORDEN PÚBLICO para tener prioridad
   violencia_politica: [
     'violencia politica', 'violencia política',
     'amenaza candidato', 'amenaza a candidato', 'amenazaron candidato',
+    'amenazas a candidato', 'amenazas candidatos', 'amenaza a candidatos',
+    'amenaza directa candidato', 'amenazas directas candidatos',
+    'amenazar candidato', 'amenazar a candidato', 'acusado amenazar candidato',
+    'amenaza a ex candidato', 'amenazar a ex candidato',
     'atentado candidato', 'atentado contra candidato',
     'asesinato candidato', 'candidato asesinado', 'candidato muerto',
-    'candidato amenazado', 'candidatos amenazados',
-    'sede campaña', 'sede de campaña', 'daño sede', 'ataque sede',
+    'candidato amenazado', 'candidatos amenazados', 'candidatos en riesgo',
+    'ex candidato amenazado', 'amenazas candidato',
+    'sede campaña', 'sede de campaña', 'daño sede campaña', 'ataque sede campaña',
     'publicidad electoral', 'propaganda electoral', 'vallas destruidas',
     'intimidacion electoral', 'intimidación electoral',
-    'lider politico', 'líder político', 'lider social amenazado',
+    'lider politico amenazado', 'líder político amenazado',
+    'lider social amenazado', 'líder social amenazado',
     'concejal amenazado', 'alcalde amenazado', 'congresista amenazado',
     'diputado amenazado', 'politico amenazado', 'político amenazado',
+    'senador amenazado', 'representante amenazado',
     'elecciones violencia', 'violencia electoral',
-    'campana politica', 'campaña política', 'ataque politico', 'ataque político',
-    'candidato herido', 'atentan contra', 'panfleto amenaza', 
-    
+    'campana politica', 'campaña política atacada',
+    'ataque politico', 'ataque político',
+    'candidato herido', 'atentan contra candidato',
+    'panfleto amenaza candidato', 'seguridad candidatos',
+    'preocupacion candidatos', 'preocupación candidatos',
+    'amenazas directas a candidatos', 'preocupacion por amenazas',
+    'acusado de amenazar'
   ],
 
   // Orden público — conflicto armado y seguridad territorial
@@ -44,25 +55,27 @@ const CATEGORIAS = {
     'disidencias', 'grupo armado', 'amenaza', 'reclutamiento'
   ],
 
-  // Desplazamiento — crisis humanitaria
+  // Desplazamiento
   desplazamiento: [
     'desplazamiento', 'desplazados', 'desplazamiento masivo',
     'familias huyen', 'comunidad abandona', 'éxodo', 'refugiados'
   ],
 
-  // Minería — legal e ilegal, impacto ambiental y económico
+  // Minería
   mineria: [
     'mineria', 'minería', 'minero', 'mina de oro', 'extraccion',
     'extracción', 'dragas', 'retroexcavadora', 'mineria ilegal',
     'minería ilegal', 'accidente minero', 'derrumbe en mina',
-    'carbón', 'carbon', 'oro', 'plata', 'socavon', 'socavón'
+    'carbón', 'carbon', 'socavon', 'socavón'
   ],
 
-  // Desastres naturales y clima
+  // Clima y desastres
   clima: [
     'lluvia', 'inundacion', 'inundación', 'derrumbe', 'deslizamiento',
     'avalancha', 'vendaval', 'granizada', 'creciente', 'rio crecido',
-    'río crecido', 'alerta roja', 'alerta amarilla', 'emergencia climatica',
+    'río crecido', 'desbordamiento', 'desborde', 'rio desbordado',
+    'río desbordado', 'quebrada desbordada', 'arroyo desbordado',
+    'alerta roja', 'alerta amarilla', 'emergencia climatica',
     'emergencia climática', 'desastre natural', 'temporada de lluvias',
     'sequia', 'sequía', 'incendio forestal'
   ],

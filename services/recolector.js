@@ -9,13 +9,10 @@ const { insertarNoticia }   = require('../models/NoticiaModel');
 const RSS_BASE = 'https://news.google.com/rss/search';
 
 // ================= SECCIÓN: PALABRAS CLAVE ANTIOQUIA =================
-// Lista de términos que deben aparecer en el título para considerar
-// que la noticia es relevante para Antioquia
 const TERMINOS_ANTIOQUIA = [
   'antioquia', 'medellín', 'medellin', 'urabá', 'uraba',
   'bajo cauca', 'nordeste', 'suroeste', 'occidente antioqueño',
   'valle de aburrá', 'aburra', 'magdalena medio',
-  // Municipios más mencionados en noticias
   'turbo', 'apartadó', 'apartado', 'caucasia', 'ituango', 'briceño', 'briceno',
   'segovia', 'remedios', 'el bagre', 'tarazá', 'taraza', 'zaragoza', 'cáceres', 'caceres',
   'puerto berrío', 'puerto berrio', 'yondó', 'yondo', 'nechí', 'nechi',
@@ -26,15 +23,12 @@ const TERMINOS_ANTIOQUIA = [
   'yarumal', 'valdivia', 'campamento',
   'san carlos', 'granada', 'san luis', 'cocorná', 'cocorna',
   'amalfi', 'cisneros', 'yolombó', 'yolombo',
-  // Grupos armados presentes en Antioquia
   'eln', 'clan del golfo', 'agc', 'egc', 'frente 36', 'frente 18',
   'gdco', 'pachelly', 'la sierra', 'robledo',
-  // Gobernación
   'gobernación de antioquia', 'gobernacion de antioquia'
 ];
 
 // ================= SECCIÓN: FILTRO DE RELEVANCIA =================
-// Verifica que una noticia realmente sea de Antioquia
 function esRelevanteParaAntioquia(titulo) {
   const tNorm = titulo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   return TERMINOS_ANTIOQUIA.some(t => {
@@ -43,10 +37,10 @@ function esRelevanteParaAntioquia(titulo) {
   });
 }
 
-// ================= SECCIÓN: QUERIES MEJORADAS CON GOOGLE ALERTS =================
+// ================= SECCIÓN: QUERIES =================
 const QUERIES_ANTIOQUIA = [
 
-  // ── ORDEN PÚBLICO (basado en alertas Google) ──────────────────────────────
+  // ── ORDEN PÚBLICO ─────────────────────────────────────────────────────────
   '"Antioquia" amenaza OR asonada OR combate OR enfrentamiento OR secuestro',
   '"Antioquia" desplazamiento OR masacre OR artefacto explosivo OR bomba OR panfleto',
   '"Antioquia" líder social OR captura OR neutralizado OR abatido OR fuerza pública',
@@ -83,17 +77,20 @@ const QUERIES_ANTIOQUIA = [
   'retroexcavadora Antioquia',
 
   // ── CLIMA Y DESASTRES ─────────────────────────────────────────────────────
-  'lluvia', 'inundacion', 'inundación', 'derrumbe', 'deslizamiento',
-'avalancha', 'vendaval', 'granizada', 'creciente', 'rio crecido',
-'río crecido', 'desbordamiento', 'alerta roja', 'alerta amarilla',
+  'inundación Antioquia', 'deslizamiento Antioquia',
+  'emergencia Antioquia', 'avalancha Antioquia', 'lluvia Antioquia',
+  'desbordamiento Antioquia',
 
-  // ── VIOLENCIA POLÍTICA ────────────────────────────────────────────────────
-  'violencia política Colombia', 'candidato amenazado Colombia',
-  'atentado candidato Colombia', 'líder político amenazado Colombia',
-  'amenaza directa candidato', 'amenazas directas candidatos',
-'preocupacion candidatos', 'preocupación candidatos',
-'amenaza a candidatos', 'candidatos en riesgo',
-'atentado contra candidato', 'seguridad candidatos',
+  // ── VIOLENCIA POLÍTICA — sin filtro geográfico ───────────────────────────
+  'violencia política Colombia',
+  'candidato amenazado Colombia',
+  'atentado candidato Colombia',
+  'líder político amenazado Colombia',
+  'amenaza directa candidatos Colombia',
+  'amenazas candidatos Colombia',
+  'sede campaña atacada Colombia',
+  'intimidacion electoral Colombia',
+
   // ── SOCIAL ────────────────────────────────────────────────────────────────
   'salud Antioquia', 'educación Antioquia', 'infraestructura Antioquia'
 ];
@@ -141,7 +138,7 @@ async function recolectarAntioquia() {
   let insertadas = 0;
   let duplicadas = 0;
   let errores    = 0;
-  let filtradas  = 0; // Noticias descartadas por no ser de Antioquia
+  let filtradas  = 0;
 
   console.log(`[CRON] Iniciando recolección — ${new Date().toLocaleString('es-CO')}`);
 
@@ -150,8 +147,9 @@ async function recolectarAntioquia() {
       const noticias = await fetchNoticias(query, 'antioquia');
 
       for (const noticia of noticias) {
-        // Filtro de relevancia — solo guardamos noticias de Antioquia
-        if (!esRelevanteParaAntioquia(noticia.titulo)) {
+        // Violencia política entra siempre — es nacional por definición
+        const esVP = noticia.categoria === 'violencia_politica';
+        if (!esVP && !esRelevanteParaAntioquia(noticia.titulo)) {
           filtradas++;
           continue;
         }
@@ -227,7 +225,9 @@ async function recolectarHistorico() {
     'emergencia Antioquia',
     'Medellín Colombia',
     'Urabá Antioquia',
-    'Bajo Cauca Antioquia'
+    'Bajo Cauca Antioquia',
+    'violencia política Colombia',
+    'candidato amenazado Colombia'
   ];
 
   for (const { desde, hasta } of semanas) {
