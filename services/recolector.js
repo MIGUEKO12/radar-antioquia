@@ -146,13 +146,11 @@ async function recolectarAntioquia() {
       const noticias = await fetchNoticias(query, 'antioquia');
 
       for (const noticia of noticias) {
-        // Violencia política entra siempre sin importar la región
-const esViolenciaPolitica = noticia.categoria === 'violencia_politica';
-// El resto debe ser relevante para Antioquia
-if (!esViolenciaPolitica && !esRelevanteParaAntioquia(noticia.titulo)) {
-  filtradas++;
-  continue;
-}
+        // Filtro de relevancia — solo guardamos noticias de Antioquia
+        if (!esRelevanteParaAntioquia(noticia.titulo)) {
+          filtradas++;
+          continue;
+        }
         const esNueva = insertarNoticia(noticia);
         if (esNueva) insertadas++;
         else         duplicadas++;
@@ -234,7 +232,10 @@ async function recolectarHistorico() {
         const queryConFecha = `${query} after:${desde} before:${hasta}`;
         const noticias = await fetchNoticias(queryConFecha, 'antioquia');
         for (const n of noticias) {
-          if (esRelevanteParaAntioquia(n.titulo) && insertarNoticia(n)) insertadas++;
+          const esVP = n.categoria === 'violencia_politica';
+          if (esVP || esRelevanteParaAntioquia(n.titulo)) {
+            if (insertarNoticia(n)) insertadas++;
+          }
         }
         await new Promise(r => setTimeout(r, 800));
       } catch (err) {
