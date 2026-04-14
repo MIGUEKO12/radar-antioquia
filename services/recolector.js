@@ -146,11 +146,13 @@ async function recolectarAntioquia() {
       const noticias = await fetchNoticias(query, 'antioquia');
 
       for (const noticia of noticias) {
-        // Filtro de relevancia — solo guardamos noticias de Antioquia
-        if (!esRelevanteParaAntioquia(noticia.titulo)) {
-          filtradas++;
-          continue;
-        }
+        // Violencia política entra siempre sin importar la región
+const esViolenciaPolitica = noticia.categoria === 'violencia_politica';
+// El resto debe ser relevante para Antioquia
+if (!esViolenciaPolitica && !esRelevanteParaAntioquia(noticia.titulo)) {
+  filtradas++;
+  continue;
+}
         const esNueva = insertarNoticia(noticia);
         if (esNueva) insertadas++;
         else         duplicadas++;
