@@ -162,6 +162,8 @@ function actualizarClasificacion(categorias, totalGeneral, contexto = null) {
   const catMap = {};
   categorias.forEach(c => { catMap[c.categoria] = c.total; });
   catMap.orden_publico = (catMap.orden_publico||0) + (catMap.desplazamiento||0);
+  // Agregar a general las categorías sin barra propia
+catMap.general = (catMap.general||0) + (catMap.salud||0) + (catMap.infraestructura||0);
   const maxTotal = Math.max(...config.map(c => catMap[c.key]||0), 1);
 
   if ($('clasificacion-lista')) {
