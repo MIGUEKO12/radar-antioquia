@@ -4,6 +4,7 @@ const xml2js                = require('xml2js');
 const { detectarUbicacion } = require('../config/municipios');
 const { clasificarNoticia } = require('./clasificador');
 const { insertarNoticia }   = require('../models/NoticiaModel');
+const { aplicarFiltro }     = require('./filtro');  // Filtro de calidad
 
 // ================= SECCIÓN: CONFIGURACIÓN RSS =================
 const RSS_BASE = 'https://news.google.com/rss/search';
@@ -127,7 +128,8 @@ async function fetchNoticias(query, modo = 'antioquia') {
     const fecha    = fechaCO.toISOString().replace('Z', '');
 
     const { subregion, municipio } = detectarUbicacion(titulo);
-    const categoria = clasificarNoticia(titulo);
+    const categoriaBase = clasificarNoticia(titulo);
+    const categoria     = aplicarFiltro(titulo, categoriaBase); // Corrección de contexto
 
     return { titulo, link, fecha, subregion, municipio, categoria, modo, query };
   });
