@@ -176,14 +176,14 @@ button { cursor:pointer; font-family:inherit; }
 .noticia-titulo a{ color:var(--texto);transition:color 0.15s; }
 .noticia-titulo a:hover { color:var(--verde-claro); }
 .noticia-meta    { display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:auto; }
-.badge           { font-size:10px;padding:1px 8px;border-radius:8px;font-weight:600; }
-.badge-rojo      { background:var(--rojo-claro);color:var(--rojo); }
-.badge-rosa      { background:var(--rosa-claro);color:var(--rosa); }
-.badge-amber     { background:var(--amber-claro);color:var(--amber); }
-.badge-azul      { background:var(--azul-claro);color:var(--azul); }
-.badge-verde     { background:#e8f5e9;color:var(--verde-gob); }
-.badge-gris      { background:#f5f5f5;color:#616161; }
-.badge-morado    { background:var(--morado-claro);color:var(--morado); }
+.badge           { font-size:10px;padding:3px 10px;border-radius:20px;font-weight:600;display:inline-flex;align-items:center; }
+.badge-rojo      { background:#ffebee;color:#c62828;border:1px solid #ffcdd2; }
+.badge-rosa      { background:#fce4ec;color:#880e4f;border:1px solid #f8bbd0; }
+.badge-amber     { background:#fff3e0;color:#e65100;border:1px solid #ffe0b2; }
+.badge-azul      { background:#e3f2fd;color:#1565c0;border:1px solid #bbdefb; }
+.badge-verde     { background:#e8f5e9;color:#1b5e20;border:1px solid #c8e6c9; }
+.badge-gris      { background:#f5f5f5;color:#616161;border:1px solid #e0e0e0; }
+.badge-morado    { background:#f3e5f5;color:#6a1b9a;border:1px solid #e1bee7; }
 .noticia-fecha   { font-size:10px;color:var(--texto-suave); }
 .noticia-mun     { font-size:10px;color:var(--verde-claro);font-weight:600; }
 
