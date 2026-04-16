@@ -17,7 +17,7 @@ const FUENTES = {
     'NTN24', 'Noticias Caracol', 'Noticias RCN', 'Agencia EFE', 'EFE',
     'El Heraldo', 'ELHERALDO.CO',
     // Digitales de alta credibilidad
-    'Infobae', 'Infobae Colombia', 'La Silla Vacía', 'La Silla Vacia',
+     'La Silla Vacía', 'La Silla Vacia',
     // Investigación
     'Agencia de Periodismo Investigativo', 'API Colombia', 'Cuestión Pública',
   ],
@@ -38,7 +38,7 @@ const FUENTES = {
     'RTVC', 'RTVC Noticias', 'Señal Colombia', 'Canal Institucional',
     // Urabá y otros
     'La Chiva de Urabá', 'La Chiva de Uraba',
-    'Informativo Antioquia', 'Hora 13 Noticias', 'Hora13',
+    'Informativo Antioquia', 'Hora 13 Noticias', 'Hora13', 'Infobae', 'Infobae Colombia',
   ],
 
   // ── NIVEL BAJA (10) ───────────────────────────────────────────────────────
