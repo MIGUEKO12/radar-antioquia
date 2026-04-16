@@ -1,5 +1,5 @@
 // ================= SECCIÓN: DEPENDENCIAS =================
-const initSqlJs = require('sql.js');   // SQLite en WebAssembly — sin compilación nativa
+const initSqlJs = require('sql.js');
 const path      = require('path');
 const fs        = require('fs');
 
@@ -12,8 +12,8 @@ if (!fs.existsSync(DB_DIR)) {
 }
 
 // ================= SECCIÓN: ESTADO =================
-let _db  = null;  // Instancia en memoria
-let _SQL = null;  // Motor sql.js
+let _db  = null;
+let _SQL = null;
 
 async function initDB() {
   _SQL = await initSqlJs();
@@ -27,6 +27,7 @@ async function initDB() {
     console.log('[DB] Nueva base de datos:', DB_PATH);
   }
 
+  // Crear tabla principal
   _db.run(`
     CREATE TABLE IF NOT EXISTS noticias (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,15 +47,18 @@ async function initDB() {
     CREATE INDEX IF NOT EXISTS idx_subregion ON noticias(subregion);
     CREATE INDEX IF NOT EXISTS idx_categoria ON noticias(categoria);
     CREATE INDEX IF NOT EXISTS idx_hash      ON noticias(hash);
-    CREATE INDEX IF NOT EXISTS idx_score     ON noticias(score);
   `);
 
-  // Migración segura: agregar columna score si no existe en DB ya creadas
-  try {
-    _db.run(`ALTER TABLE noticias ADD COLUMN score INTEGER DEFAULT 1`);
-    console.log('[DB] Columna score agregada por migración');
-  } catch(e) {
-    // Ya existe — normal en DBs nuevas o ya migradas
+  // Migración segura para DBs existentes que no tienen columna score
+  const columnas = db.all(`PRAGMA table_info(noticias)`);
+  const tieneScore = columnas.some(c => c.name === 'score');
+  if (!tieneScore) {
+    try {
+      _db.run(`ALTER TABLE noticias ADD COLUMN score INTEGER DEFAULT 1`);
+      console.log('[DB] Migración: columna score agregada');
+    } catch(e) {
+      console.log('[DB] Migración score omitida:', e.message);
+    }
   }
 
   guardarEnDisco();
@@ -103,3 +107,6 @@ const db = {
 };
 
 module.exports = { db, initDB };
+
+
+//asdasdasd
