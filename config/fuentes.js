@@ -1,35 +1,35 @@
 // ================= SECCIÓN: PUNTUACIÓN DE FUENTES =================
 // Sistema de scoring para ordenar noticias por credibilidad del medio.
-// Alta=3, Media=2, Baja=1, Desconocido=1 (por defecto)
-// Para agregar nuevas fuentes, añade el nombre exacto como aparece
-// al final del título de la noticia (después del último " - ")
+// Alta=100, Media=50, Baja=10, Desconocido=10 (por defecto)
+// Rango amplio para permitir niveles futuros (ej: Diamante=500 para fuentes oficiales)
 
 const FUENTES = {
 
-  // ── NIVEL ALTA (3) ────────────────────────────────────────────────────────
-  // Medios con procesos de verificación rigurosos. Noticias confirmadas.
+  // ── NIVEL ALTA (100) ──────────────────────────────────────────────────────
   alta: [
     // Prensa y TV Regional
     'El Colombiano', 'Teleantioquia', 'Telemedellín', 'Telemedellín Noticias',
     // Grandes cadenas de radio
     'Blu Radio', 'Caracol Radio', 'RCN Radio', 'La FM', 'W Radio',
     // Prensa nacional
-    'El Tiempo', 'El Espectador', 'Revista Semana', 'Semana',
+    'El Tiempo', 'ELTIEMPO.COM', 'El Espectador', 'Revista Semana', 'Semana',
     // Agencias y TV
     'NTN24', 'Noticias Caracol', 'Noticias RCN', 'Agencia EFE', 'EFE',
+    'El Heraldo', 'ELHERALDO.CO',
     // Digitales de alta credibilidad
     'Infobae', 'Infobae Colombia', 'La Silla Vacía', 'La Silla Vacia',
     // Investigación
     'Agencia de Periodismo Investigativo', 'API Colombia', 'Cuestión Pública',
   ],
 
-  // ── NIVEL MEDIA (2) ───────────────────────────────────────────────────────
-  // Fuentes clave para municipios donde los grandes medios no llegan.
+  // ── NIVEL MEDIA (50) ──────────────────────────────────────────────────────
   media: [
     // Oriente antioqueño
     'MiOriente', 'Mi Oriente', 'Actualidad Oriente', 'DiariOriente', 'Orientese.co',
     // Norte y otros
-    'El Norte', 'Periódico El Norte', 'Mi Suroeste',
+    'El Norte', 'Periódico El Norte', 'elnorte.com.co', 'Mi Suroeste',
+    // Opinión regional
+    'La Opinión', 'La Opinion',
     // Digitales consolidados
     'Minuto30', 'IFM Noticias', 'Alerta Paisa', 'Vivir en El Poblado',
     // Investigación local
@@ -41,11 +41,11 @@ const FUENTES = {
     'Informativo Antioquia', 'Hora 13 Noticias', 'Hora13',
   ],
 
-  // ── NIVEL BAJA (1) ────────────────────────────────────────────────────────
-  // Útiles para detectar algo que está pasando, pero no como fuente definitiva.
+  // ── NIVEL BAJA (10) ───────────────────────────────────────────────────────
   baja: [
     // Agregadores y viralidad
     'Pulzo', 'Kienyke', 'Estrella Digital Colombia', 'Estrella Digital',
+    'Colombia.com',
     // Portales de denuncia social
     'Denuncias Antioquia', 'Guardianes Antioquia', 'Colombia Oscura',
     // Otros pequeños
@@ -55,39 +55,29 @@ const FUENTES = {
 };
 
 // ── MAPA DE PUNTUACIONES ──────────────────────────────────────────────────
-// Construye un mapa nombre→puntuación para búsqueda rápida
 const MAPA_PUNTUACIONES = {};
-FUENTES.alta.forEach(f  => { MAPA_PUNTUACIONES[f.toLowerCase()] = 3; });
-FUENTES.media.forEach(f => { MAPA_PUNTUACIONES[f.toLowerCase()] = 2; });
-FUENTES.baja.forEach(f  => { MAPA_PUNTUACIONES[f.toLowerCase()] = 1; });
+FUENTES.alta.forEach(f  => { MAPA_PUNTUACIONES[f.toLowerCase()] = 100; });
+FUENTES.media.forEach(f => { MAPA_PUNTUACIONES[f.toLowerCase()] = 50; });
+FUENTES.baja.forEach(f  => { MAPA_PUNTUACIONES[f.toLowerCase()] = 10; });
 
 // ================= SECCIÓN: FUNCIÓN PRINCIPAL =================
-/**
- * Extrae el nombre del medio del título y retorna su puntuación.
- * Los títulos de Google News vienen como "Título de la noticia - Nombre del Medio"
- * @param {string} titulo - Título completo de la noticia
- * @returns {number} Puntuación: 3=Alta, 2=Media, 1=Baja/Desconocido
- */
 function obtenerPuntuacionFuente(titulo) {
-  if (!titulo || !titulo.includes(' - ')) return 1; // Sin medio identificable
+  if (!titulo || !titulo.includes(' - ')) return 10;
 
-  // Extraer el nombre del medio (última parte después del " - ")
-  const partes = titulo.split(' - ');
-  const medio  = partes[partes.length - 1].trim().toLowerCase();
+  const partes   = titulo.split(' - ');
+  const medioRaw = partes[partes.length - 1].trim().toLowerCase();
+  // Limpiar dominios como .com, .co, .net, .org
+  const medio    = medioRaw.replace(/\.(com|co|net|org|com\.co)$/, '').trim();
 
-  // Buscar coincidencia exacta primero
-  if (MAPA_PUNTUACIONES[medio] !== undefined) {
-    return MAPA_PUNTUACIONES[medio];
-  }
+  // Buscar coincidencia exacta
+  if (MAPA_PUNTUACIONES[medio] !== undefined) return MAPA_PUNTUACIONES[medio];
 
-  // Buscar coincidencia parcial (por si el nombre viene con variaciones)
+  // Buscar coincidencia parcial
   for (const [nombre, puntuacion] of Object.entries(MAPA_PUNTUACIONES)) {
-    if (medio.includes(nombre) || nombre.includes(medio)) {
-      return puntuacion;
-    }
+    if (medio.includes(nombre) || nombre.includes(medio)) return puntuacion;
   }
 
-  return 1; // Fuente desconocida = nivel bajo por defecto
+  return 10; // Fuente desconocida = nivel bajo por defecto
 }
 
 // ================= SECCIÓN: EXPORTACIONES =================

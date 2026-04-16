@@ -267,7 +267,9 @@ function renderListaNoticias(noticias, contenedor) {
     const fecha   = new Date(n.fecha).toLocaleDateString('es-CO', { day:'numeric',month:'short',hour:'2-digit',minute:'2-digit' });
     const muni    = n.municipio ? `<span class="noticia-mun">${n.municipio}</span>` : '';
     const color   = COLORES_BORDE[n.categoria] || '#9e9e9e';
-    return `<div class="noticia-item" style="border-left-color:${color}">
+    const score       = n.score || 1;
+    const borderWidth = score >= 100 ? '4px' : score >= 50 ? '3px' : '2px';
+    return `<div class="noticia-item" style="border-left-color:${color};border-left-width:${borderWidth}">
       <div class="noticia-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div>
       <div class="noticia-meta">
         <div class="noticia-meta-izq"><span class="badge ${badge}">${catNom}</span>${muni}</div>
