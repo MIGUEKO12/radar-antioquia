@@ -255,6 +255,9 @@ function renderPaginacionPanel(maxPag) {
 function irPaginaPanel(n) {
   Estado.paginaPanel = n;
   renderNoticiasPanel();
+  // Mantener la posición del scroll sin mover la pantalla
+  const lista = $('noticias-lista');
+  if (lista) lista.scrollTop = 0;
 }
 window.irPaginaPanel = irPaginaPanel;
 
@@ -265,6 +268,8 @@ function navegarNoticias(dir) {
   if (nueva < 0 || nueva > maxPag) return;
   Estado.paginaPanel = nueva;
   renderNoticiasPanel();
+  const lista = $('noticias-lista');
+  if (lista) lista.scrollTop = 0;
 }
 
 function renderListaNoticias(noticias, contenedor) {
