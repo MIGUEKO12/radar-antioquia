@@ -1,4 +1,4 @@
- // ================= SECCIÓN: ESTADO GLOBAL =================
+// ================= SECCIÓN: ESTADO GLOBAL =================
 const Estado = {
   modo:'antioquia', periodo:'hoy', diasTendencia:7,
   paginaActual:1, totalPaginas:1, noticiasLibre:[],
@@ -8,7 +8,7 @@ const Estado = {
   paginaPanel:0, filtroCatPanel:'todas',
 };
 
-const ITEMS_PANEL     = 30;
+const ITEMS_PANEL     = 16;
 const ITEMS_POR_PAGINA = 20;
 const $ = id => document.getElementById(id);
 
@@ -235,7 +235,28 @@ function renderNoticiasPanel() {
   if ($('btn-not-sig')) $('btn-not-sig').disabled = Estado.paginaPanel >= maxPag;
 
   renderListaNoticias(pagina, $('noticias-lista'));
+  renderPaginacionPanel(maxPag);
 }
+
+function renderPaginacionPanel(maxPag) {
+  const cont = $('noticias-paginacion');
+  if (!cont) return;
+  if (maxPag <= 0) { cont.innerHTML = ''; return; }
+  const p = Estado.paginaPanel;
+  let html = `<button class="pag-btn" onclick="navegarNoticias(-1)" ${p===0?'disabled':''}>← Ant</button>`;
+  const ini = Math.max(0, p-2), fin = Math.min(maxPag, p+2);
+  if (ini > 0) html += `<button class="pag-btn" onclick="irPaginaPanel(0)">1</button><span class="pag-sep">…</span>`;
+  for (let i=ini; i<=fin; i++) html += `<button class="pag-btn ${i===p?'activo':''}" onclick="irPaginaPanel(${i})">${i+1}</button>`;
+  if (fin < maxPag) html += `<span class="pag-sep">…</span><button class="pag-btn" onclick="irPaginaPanel(${maxPag})">${maxPag+1}</button>`;
+  html += `<button class="pag-btn" onclick="navegarNoticias(1)" ${p===maxPag?'disabled':''}>Sig →</button>`;
+  cont.innerHTML = html;
+}
+
+function irPaginaPanel(n) {
+  Estado.paginaPanel = n;
+  renderNoticiasPanel();
+}
+window.irPaginaPanel = irPaginaPanel;
 
 function navegarNoticias(dir) {
   const total  = Estado.noticiasPanel.length;
@@ -252,12 +273,18 @@ function renderListaNoticias(noticias, contenedor) {
     contenedor.innerHTML = '<p style="color:#9e9e9e;font-size:12px;padding:12px 0">Sin noticias para este filtro.</p>';
     return;
   }
+  const COLORES_BORDE = {
+    homicidio:'#c62828', feminicidio:'#880e4f', orden_publico:'#e53935',
+    desplazamiento:'#e53935', mineria:'#e65100', clima:'#1565c0',
+    violencia_politica:'#6a1b9a', salud:'#2e7d32', general:'#9e9e9e'
+  };
   contenedor.innerHTML = noticias.map(n => {
     const badge  = BADGES[n.categoria]    || 'badge-gris';
     const catNom = NOMBRES_C[n.categoria] || n.categoria;
     const fecha  = new Date(n.fecha).toLocaleDateString('es-CO', { day:'numeric',month:'short',hour:'2-digit',minute:'2-digit' });
     const muni   = n.municipio ? `<span class="noticia-mun">${n.municipio}</span>` : '';
-    return `<div class="noticia-item">
+    const color  = COLORES_BORDE[n.categoria] || '#9e9e9e';
+    return `<div class="noticia-item" style="border-left-color:${color}">
       <div class="noticia-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div>
       <div class="noticia-meta"><span class="badge ${badge}">${catNom}</span>${muni}<span class="noticia-fecha">${fecha}</span></div>
     </div>`;
