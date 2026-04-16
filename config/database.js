@@ -27,7 +27,7 @@ async function initDB() {
     console.log('[DB] Nueva base de datos:', DB_PATH);
   }
 
-  // Crear tabla principal
+  // Crear tabla principal (sin score para compatibilidad con DB existentes)
   _db.run(`
     CREATE TABLE IF NOT EXISTS noticias (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,7 +40,6 @@ async function initDB() {
       modo        TEXT    DEFAULT 'antioquia',
       query       TEXT    DEFAULT NULL,
       hash        TEXT    NOT NULL UNIQUE,
-      score       INTEGER DEFAULT 1,
       creado_en   TEXT    DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_fecha     ON noticias(fecha);
@@ -49,16 +48,12 @@ async function initDB() {
     CREATE INDEX IF NOT EXISTS idx_hash      ON noticias(hash);
   `);
 
-  // Migración segura para DBs existentes que no tienen columna score
-  const columnas = db.all(`PRAGMA table_info(noticias)`);
-  const tieneScore = columnas.some(c => c.name === 'score');
-  if (!tieneScore) {
-    try {
-      _db.run(`ALTER TABLE noticias ADD COLUMN score INTEGER DEFAULT 1`);
-      console.log('[DB] Migración: columna score agregada');
-    } catch(e) {
-      console.log('[DB] Migración score omitida:', e.message);
-    }
+  // Migración segura: agregar columna score si no existe
+  try {
+    _db.run(`ALTER TABLE noticias ADD COLUMN score INTEGER DEFAULT 1`);
+    console.log('[DB] Migración: columna score agregada');
+  } catch(e) {
+    // Ya existe — comportamiento normal
   }
 
   guardarEnDisco();
@@ -107,6 +102,3 @@ const db = {
 };
 
 module.exports = { db, initDB };
-
-
-//asdasdasd
