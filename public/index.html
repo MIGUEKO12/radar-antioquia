@@ -100,23 +100,29 @@
 
 <!-- MODO ANTIOQUIA -->
 <div id="seccion-mapa">
+  <!-- NOTICIAS RECIENTES Y CLASIFICACIÓN — parte superior -->
   <main class="main-layout">
-    <section class="col-mapa">
-      <div class="breadcrumb" id="breadcrumb"><span class="bc-item activo">Antioquia</span></div>
-      <div id="aviso-ubicacion" style="display:none;font-size:12px;color:#e65100;background:#fff3e0;padding:8px 14px;border-radius:8px;border:1px solid #ffcc02;margin-bottom:8px;align-items:center;gap:8px;"></div>
-      <div style="position:relative;">
-        <div id="mapa" class="mapa-container"></div>
-        <button id="btn-sin-ubicar" onclick="verSinUbicar()" style="display:none;position:absolute;bottom:50px;left:10px;z-index:999;background:#78909c;color:white;border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
-          Sin ubicar: <span id="contador-sin-ubicar">0</span>
-        </button>
+    <div class="panel-card flex-grow">
+      <h3 class="panel-titulo" id="noticias-titulo">Noticias recientes</h3>
+      <div class="noticias-filtros" id="noticias-filtros">
+        <button class="filtro-cat-btn activo" onclick="filtrarNoticiasPanel('todas',this)">Todas</button>
+        <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('orden_publico',this)">Orden público</button>
+        <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('homicidio',this)">Homicidio</button>
+        <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('feminicidio',this)">Feminicidio</button>
+        <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('mineria',this)">Minería</button>
+        <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('clima',this)">Clima</button>
+        <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('general',this)">General</button>
+        <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('violencia_politica',this)">Viol. política</button>
       </div>
-      <div class="leyenda-mapa">
-        <span class="leyenda-item"><span class="dot" style="background:#81c784"></span> General</span>
-        <span class="leyenda-item"><span class="dot" style="background:#e57373"></span> Homicidio</span>
-        <span class="leyenda-item"><span class="dot" style="background:#c62828"></span> Orden público</span>
-        <span class="leyenda-item"><span class="dot" style="background:#78909c"></span> Sin ubicar</span>
+      <div class="noticias-nav">
+        <span class="noticias-nav-info" id="not-nav-info">— de —</span>
+        <div class="noticias-nav-btns">
+          <button class="nav-not-btn" id="btn-not-ant" onclick="navegarNoticias(-1)" title="Anteriores">&#8593;</button>
+          <button class="nav-not-btn" id="btn-not-sig" onclick="navegarNoticias(1)"  title="Siguientes">&#8595;</button>
+        </div>
       </div>
-    </section>
+      <div id="noticias-lista" class="noticias-scroll"></div>
+    </div>
 
     <aside class="col-panel">
       <div class="panel-card" style="position:relative">
@@ -134,30 +140,28 @@
           Extinción de dominio · Lavado de activos
         </div>
       </div>
-
-      <div class="panel-card flex-grow">
-        <h3 class="panel-titulo" id="noticias-titulo">Noticias recientes</h3>
-        <div class="noticias-filtros" id="noticias-filtros">
-          <button class="filtro-cat-btn activo" onclick="filtrarNoticiasPanel('todas',this)">Todas</button>
-          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('orden_publico',this)">Orden público</button>
-          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('homicidio',this)">Homicidio</button>
-          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('feminicidio',this)">Feminicidio</button>
-          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('mineria',this)">Minería</button>
-          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('clima',this)">Clima</button>
-          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('general',this)">General</button>
-          <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('violencia_politica',this)">Viol. política</button>
-        </div>
-        <div class="noticias-nav">
-          <span class="noticias-nav-info" id="not-nav-info">— de —</span>
-          <div class="noticias-nav-btns">
-            <button class="nav-not-btn" id="btn-not-ant" onclick="navegarNoticias(-1)" title="Anteriores">&#8593;</button>
-            <button class="nav-not-btn" id="btn-not-sig" onclick="navegarNoticias(1)"  title="Siguientes">&#8595;</button>
-          </div>
-        </div>
-        <div id="noticias-lista" class="noticias-scroll"></div>
-      </div>
     </aside>
   </main>
+
+  <!-- MAPA — parte inferior -->
+  <div class="seccion-mapa-contenedor">
+    <section class="col-mapa">
+      <div class="breadcrumb" id="breadcrumb"><span class="bc-item activo">Antioquia</span></div>
+      <div id="aviso-ubicacion" style="display:none;font-size:12px;color:#e65100;background:#fff3e0;padding:8px 14px;border-radius:8px;border:1px solid #ffcc02;margin-bottom:8px;align-items:center;gap:8px;"></div>
+      <div style="position:relative;">
+        <div id="mapa" class="mapa-container"></div>
+        <button id="btn-sin-ubicar" onclick="verSinUbicar()" style="display:none;position:absolute;bottom:50px;left:10px;z-index:999;background:#78909c;color:white;border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+          Sin ubicar: <span id="contador-sin-ubicar">0</span>
+        </button>
+      </div>
+      <div class="leyenda-mapa">
+        <span class="leyenda-item"><span class="dot" style="background:#81c784"></span> General</span>
+        <span class="leyenda-item"><span class="dot" style="background:#e57373"></span> Homicidio</span>
+        <span class="leyenda-item"><span class="dot" style="background:#c62828"></span> Orden público</span>
+        <span class="leyenda-item"><span class="dot" style="background:#78909c"></span> Sin ubicar</span>
+      </div>
+    </section>
+  </div>
 </div>
 
 <!-- GRÁFICOS -->
