@@ -89,7 +89,7 @@ button { cursor:pointer; font-family:inherit; }
 .bc-item.activo { color:var(--texto);cursor:default; }
 .bc-item.activo:hover { text-decoration:none; }
 .bc-sep         { color:var(--texto-suave); }
-.mapa-container { height:450px;border-radius:var(--radio);overflow:hidden;border:1px solid var(--gris-borde);box-shadow:var(--sombra);position:relative; }
+.mapa-container { height:320px;border-radius:var(--radio);overflow:hidden;border:1px solid var(--gris-borde);box-shadow:var(--sombra);position:relative; }
 .leyenda-mapa { display:flex;gap:16px;flex-wrap:wrap;padding:8px 12px;background:var(--blanco);border-radius:var(--radio);border:1px solid var(--gris-borde); }
 .leyenda-item { display:flex;align-items:center;gap:5px;font-size:12px;color:var(--texto-suave); }
 .dot { width:10px;height:10px;border-radius:50%;display:inline-block; }
