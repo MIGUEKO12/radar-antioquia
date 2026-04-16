@@ -240,10 +240,11 @@ function calcularSimilitud(pA, pB) {
   if (!pA.length || !pB.length) return 0;
   const sA = new Set(pA), sB = new Set(pB);
   const inter = [...sA].filter(p => sB.has(p)).length;
-  return inter / new Set([...sA, ...sB]).size;
+  // Usar el mínimo en lugar de la unión — más permisivo
+  return inter / Math.min(sA.size, sB.size);
 }
 
-function agruparNoticias(noticias, umbral = 0.45) {
+function agruparNoticias(noticias, umbral = 0.25) {
   if (!noticias || !noticias.length) return [];
   const proc = noticias.map(n => ({
     n, palabras: normalizarTituloGrupo(n.titulo),
