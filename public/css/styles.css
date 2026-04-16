@@ -175,7 +175,8 @@ button { cursor:pointer; font-family:inherit; }
 .noticia-titulo  { font-size:12px;color:var(--texto);line-height:1.4; }
 .noticia-titulo a{ color:var(--texto);transition:color 0.15s; }
 .noticia-titulo a:hover { color:var(--verde-claro); }
-.noticia-meta    { display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:auto; }
+.noticia-meta    { display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:auto;justify-content:space-between; }
+.noticia-meta-izq { display:flex;align-items:center;gap:6px;flex-wrap:wrap; }
 .badge           { font-size:10px;padding:3px 10px;border-radius:20px;font-weight:600;display:inline-flex;align-items:center; }
 .badge-rojo      { background:#ffebee;color:#c62828;border:1px solid #ffcdd2; }
 .badge-rosa      { background:#fce4ec;color:#880e4f;border:1px solid #f8bbd0; }
