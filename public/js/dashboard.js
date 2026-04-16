@@ -162,6 +162,7 @@ function actualizarClasificacion(categorias, totalGeneral, contexto = null) {
   const catMap = {};
   categorias.forEach(c => { catMap[c.categoria] = c.total; });
   catMap.orden_publico = (catMap.orden_publico||0) + (catMap.desplazamiento||0);
+  catMap.general = (catMap.general||0) + (catMap.salud||0) + (catMap.infraestructura||0);
   const maxTotal = Math.max(...config.map(c => catMap[c.key]||0), 1);
 
   if ($('clasificacion-lista')) {
@@ -211,8 +212,92 @@ function resetFiltrosBotones() {
 }
 
 // ================= SECCIÓN: PANEL NOTICIAS =================
-const BADGES     = { homicidio:'badge-rojo',feminicidio:'badge-rosa',orden_publico:'badge-rojo',desplazamiento:'badge-rojo',mineria:'badge-amber',clima:'badge-azul',salud:'badge-verde',violencia_politica:'badge-morado',general:'badge-gris' };
-const NOMBRES_C  = { homicidio:'Homicidio',feminicidio:'Feminicidio',orden_publico:'Orden público',desplazamiento:'Desplaz.',mineria:'Minería',clima:'Clima',salud:'Salud',violencia_politica:'Viol. política',general:'General' };
+const BADGES    = { homicidio:'badge-rojo',feminicidio:'badge-rosa',orden_publico:'badge-rojo',desplazamiento:'badge-rojo',mineria:'badge-amber',clima:'badge-azul',salud:'badge-verde',violencia_politica:'badge-morado',general:'badge-gris' };
+const NOMBRES_C = { homicidio:'Homicidio',feminicidio:'Feminicidio',orden_publico:'Orden público',desplazamiento:'Desplaz.',mineria:'Minería',clima:'Clima',salud:'Salud',violencia_politica:'Viol. política',general:'General' };
+
+
+// ================= SECCIÓN: AGRUPADOR DE NOTICIAS =================
+const PALABRAS_VACIAS = new Set([
+  'el','la','los','las','un','una','unos','unas','de','del','al','a','en',
+  'y','o','e','pero','que','con','por','para','como','se','su','sus',
+  'lo','le','les','es','son','fue','fueron','hay','han','ha','mas',
+  'este','esta','estos','estas','ese','esa','esos','esas','sobre',
+  'tras','ante','bajo','desde','hasta','entre','durante','mediante',
+  'nuevo','nueva','nuevos','nuevas','gran','grande','primer','primera',
+  'dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez',
+  'hoy','ayer','manana','semana','mes','ano','vez','caso','casos'
+]);
+
+function normalizarTituloGrupo(titulo) {
+  return titulo.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(p => p.length > 3 && !PALABRAS_VACIAS.has(p));
+}
+
+function calcularSimilitud(pA, pB) {
+  if (!pA.length || !pB.length) return 0;
+  const sA = new Set(pA), sB = new Set(pB);
+  const inter = [...sA].filter(p => sB.has(p)).length;
+  return inter / new Set([...sA, ...sB]).size;
+}
+
+function agruparNoticias(noticias, umbral = 0.45) {
+  if (!noticias || !noticias.length) return [];
+  const proc = noticias.map(n => ({
+    n, palabras: normalizarTituloGrupo(n.titulo),
+    dia: n.fecha ? n.fecha.substring(0, 10) : ''
+  }));
+  const usadas = new Set();
+  const grupos = [];
+  for (let i = 0; i < proc.length; i++) {
+    if (usadas.has(i)) continue;
+    const grupo = { principal: proc[i].n, fuentes: [] };
+    usadas.add(i);
+    for (let j = i+1; j < proc.length; j++) {
+      if (usadas.has(j) || proc[i].dia !== proc[j].dia) continue;
+      if (calcularSimilitud(proc[i].palabras, proc[j].palabras) >= umbral) {
+        grupo.fuentes.push(proc[j].n);
+        usadas.add(j);
+      }
+    }
+    grupos.push(grupo);
+  }
+  return grupos;
+}
+
+function abrirModalFuentes(idx) {
+  const grupo = window._gruposActuales?.[idx];
+  if (!grupo || !grupo.fuentes.length) return;
+  const todas = [grupo.principal, ...grupo.fuentes];
+  const html = todas.map((n, i) => {
+    const badge = BADGES[n.categoria] || 'badge-gris';
+    const cat   = NOMBRES_C[n.categoria] || n.categoria;
+    const fecha = new Date(n.fecha).toLocaleDateString('es-CO', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    const muni  = n.municipio ? `<span class="noticia-mun">${n.municipio}</span>` : '';
+    return `<div class="modal-noticia-item">
+      <div class="modal-noticia-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div>
+      <div class="modal-noticia-meta"><span class="badge ${badge}">${cat}</span>${muni}<span class="noticia-fecha">${fecha}</span></div>
+    </div>`;
+  }).join('');
+  const modal = document.getElementById('modal-fuentes');
+  const lista = document.getElementById('modal-fuentes-lista');
+  const count = document.getElementById('modal-fuentes-count');
+  if (!modal || !lista || !count) return;
+  count.textContent = `${todas.length} fuentes cubren este evento`;
+  lista.innerHTML = html;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+window.abrirModalFuentes = abrirModalFuentes;
+
+function cerrarModalFuentes() {
+  const modal = document.getElementById('modal-fuentes');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+window.cerrarModalFuentes = cerrarModalFuentes;
 
 function renderNoticiasPanel() {
   const fuente = Estado.todasNoticiasPanel;
@@ -243,21 +328,20 @@ function renderPaginacionPanel(maxPag) {
   if (!cont) return;
   if (maxPag <= 0) { cont.innerHTML = ''; return; }
   const p = Estado.paginaPanel;
-  let html = `<button class="pag-btn" onclick="navegarNoticias(-1)" ${p===0?'disabled':''}>← Ant</button>`;
+  let html = `<button class="pag-btn" onclick="event.preventDefault();this.blur();navegarNoticias(-1)" ${p===0?'disabled':''}>← Ant</button>`;
   const ini = Math.max(0, p-2), fin = Math.min(maxPag, p+2);
-  if (ini > 0) html += `<button class="pag-btn" onclick="irPaginaPanel(0)">1</button><span class="pag-sep">…</span>`;
-  for (let i=ini; i<=fin; i++) html += `<button class="pag-btn ${i===p?'activo':''}" onclick="irPaginaPanel(${i})">${i+1}</button>`;
-  if (fin < maxPag) html += `<span class="pag-sep">…</span><button class="pag-btn" onclick="irPaginaPanel(${maxPag})">${maxPag+1}</button>`;
-  html += `<button class="pag-btn" onclick="navegarNoticias(1)" ${p===maxPag?'disabled':''}>Sig →</button>`;
+  if (ini > 0) html += `<button class="pag-btn" onclick="event.preventDefault();this.blur();irPaginaPanel(0)">1</button><span class="pag-sep">…</span>`;
+  for (let i=ini; i<=fin; i++) html += `<button class="pag-btn ${i===p?'activo':''}" onclick="event.preventDefault();this.blur();irPaginaPanel(${i})">${i+1}</button>`;
+  if (fin < maxPag) html += `<span class="pag-sep">…</span><button class="pag-btn" onclick="event.preventDefault();this.blur();irPaginaPanel(${maxPag})">${maxPag+1}</button>`;
+  html += `<button class="pag-btn" onclick="event.preventDefault();this.blur();navegarNoticias(1)" ${p===maxPag?'disabled':''}>Sig →</button>`;
   cont.innerHTML = html;
 }
 
 function irPaginaPanel(n) {
+  const scrollY = window.scrollY;
   Estado.paginaPanel = n;
   renderNoticiasPanel();
-  // Mantener la posición del scroll sin mover la pantalla
-  const lista = $('noticias-lista');
-  if (lista) lista.scrollTop = 0;
+  window.scrollTo({ top: scrollY, behavior: 'instant' });
 }
 window.irPaginaPanel = irPaginaPanel;
 
@@ -266,16 +350,16 @@ function navegarNoticias(dir) {
   const maxPag = Math.max(0, Math.ceil(total / ITEMS_PANEL) - 1);
   const nueva  = Estado.paginaPanel + dir;
   if (nueva < 0 || nueva > maxPag) return;
+  const scrollY = window.scrollY;
   Estado.paginaPanel = nueva;
   renderNoticiasPanel();
-  const lista = $('noticias-lista');
-  if (lista) lista.scrollTop = 0;
+  window.scrollTo({ top: scrollY, behavior: 'instant' });
 }
 
 function renderListaNoticias(noticias, contenedor) {
   if (!contenedor) return;
   if (!noticias || noticias.length === 0) {
-    contenedor.innerHTML = '<p style="color:#9e9e9e;font-size:12px;padding:12px 0">Sin noticias para este filtro.</p>';
+    contenedor.innerHTML = '<p style="color:#9e9e9e;font-size:12px;padding:12px 0;grid-column:span 2">Sin noticias para este filtro.</p>';
     return;
   }
   const COLORES_BORDE = {
@@ -283,15 +367,21 @@ function renderListaNoticias(noticias, contenedor) {
     desplazamiento:'#e53935', mineria:'#e65100', clima:'#1565c0',
     violencia_politica:'#6a1b9a', salud:'#2e7d32', general:'#9e9e9e'
   };
-  contenedor.innerHTML = noticias.map(n => {
+  const grupos = agruparNoticias(noticias);
+  window._gruposActuales = grupos;
+  contenedor.innerHTML = grupos.map((g, idx) => {
+    const n = g.principal;
     const badge  = BADGES[n.categoria]    || 'badge-gris';
     const catNom = NOMBRES_C[n.categoria] || n.categoria;
     const fecha  = new Date(n.fecha).toLocaleDateString('es-CO', { day:'numeric',month:'short',hour:'2-digit',minute:'2-digit' });
     const muni   = n.municipio ? `<span class="noticia-mun">${n.municipio}</span>` : '';
     const color  = COLORES_BORDE[n.categoria] || '#9e9e9e';
+    const fuentes = g.fuentes.length > 0
+      ? `<span class="badge-fuentes" onclick="event.preventDefault();abrirModalFuentes(${idx})">📰 ${g.fuentes.length + 1} fuentes</span>`
+      : '';
     return `<div class="noticia-item" style="border-left-color:${color}">
       <div class="noticia-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div>
-      <div class="noticia-meta"><span class="badge ${badge}">${catNom}</span>${muni}<span class="noticia-fecha">${fecha}</span></div>
+      <div class="noticia-meta"><span class="badge ${badge}">${catNom}</span>${muni}<span class="noticia-fecha">${fecha}</span>${fuentes}</div>
     </div>`;
   }).join('');
 }
