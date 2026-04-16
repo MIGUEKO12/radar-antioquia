@@ -267,14 +267,10 @@ function renderListaNoticias(noticias, contenedor) {
     const fecha   = new Date(n.fecha).toLocaleDateString('es-CO', { day:'numeric',month:'short',hour:'2-digit',minute:'2-digit' });
     const muni    = n.municipio ? `<span class="noticia-mun">${n.municipio}</span>` : '';
     const color   = COLORES_BORDE[n.categoria] || '#9e9e9e';
-    // Extraer nombre del medio del título (parte después del último " - ")
-    const partes  = n.titulo.split(' - ');
-    const fuente  = partes.length > 1 ? partes[partes.length - 1].trim() : '';
-    const badgeFuente = fuente ? `<span class="badge-fuente">${fuente}</span>` : '';
     return `<div class="noticia-item" style="border-left-color:${color}">
       <div class="noticia-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div>
       <div class="noticia-meta">
-        <div class="noticia-meta-izq"><span class="badge ${badge}">${catNom}</span>${muni}${badgeFuente}</div>
+        <div class="noticia-meta-izq"><span class="badge ${badge}">${catNom}</span>${muni}</div>
         <span class="noticia-fecha">${fecha}</span>
       </div>
     </div>`;
