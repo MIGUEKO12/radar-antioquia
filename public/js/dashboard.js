@@ -273,10 +273,10 @@ function renderListaNoticias(noticias, contenedor) {
     const badgeFuente = fuente ? `<span class="badge-fuente">${fuente}</span>` : '';
     return `<div class="noticia-item" style="border-left-color:${color}">
       <div class="noticia-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div>
-      <div class="noticia-meta">
-        <div class="noticia-meta-izq"><span class="badge ${badge}">${catNom}</span>${muni}${badgeFuente}</div>
-        <span class="noticia-fecha">${fecha}</span>
-      </div>
+     <div class="noticia-meta">
+  <div class="noticia-meta-izq"><span class="badge ${badge}">${catNom}</span>${muni}</div>
+  <div class="noticia-meta-der">${badgeFuente}<span class="noticia-fecha">${fecha}</span></div>
+</div>
     </div>`;
   }).join('');
 }
