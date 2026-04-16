@@ -160,6 +160,9 @@ const REGLAS_RECLASIFICACION = [
 function aplicarFiltro(titulo, categoria) {
   const tNorm = titulo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
+  // ── EXCEPCIÓN ABSOLUTA: hipopótamos siempre van a General ─────────────────
+  if (tNorm.includes('hipopotamo')) return 'general';
+
   // ── PASO 1: Verificar palabras críticas ───────────────────────────────────
   // Si tiene palabras críticas, la categoría no se puede bajar a General
   const tieneCritica = PALABRAS_CRITICAS.some(p => {
