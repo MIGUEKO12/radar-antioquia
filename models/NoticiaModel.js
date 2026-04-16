@@ -1,6 +1,7 @@
 // ================= SECCIÓN: DEPENDENCIAS =================
 const { db }  = require('../config/database'); // Instancia sql.js
 const crypto  = require('crypto');             // Para hash de deduplicación
+const { obtenerPuntuacionFuente } = require('../config/fuentes'); // Scoring de fuentes
 
 // ================= SECCIÓN: HASH =================
 function generarHash(titulo) {
@@ -9,15 +10,16 @@ function generarHash(titulo) {
 
 // ================= SECCIÓN: INSERCIÓN =================
 function insertarNoticia({ titulo, link, fecha, subregion, municipio, categoria, modo, query }) {
-  const hash = generarHash(titulo);
+  const hash  = generarHash(titulo);
+  const score = obtenerPuntuacionFuente(titulo); // 3=Alta, 2=Media, 1=Baja/Desconocido
 
   // Verificamos si el hash ya existe (deduplicación manual — sql.js no tiene INSERT OR IGNORE directo)
   const existe = db.get('SELECT id FROM noticias WHERE hash = ?', [hash]);
   if (existe) return false; // Ya existe, no insertamos
 
   const result = db.run(
-    `INSERT INTO noticias (titulo, link, fecha, subregion, municipio, categoria, modo, query, hash)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO noticias (titulo, link, fecha, subregion, municipio, categoria, modo, query, hash, score)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       titulo,
       link,
@@ -27,7 +29,8 @@ function insertarNoticia({ titulo, link, fecha, subregion, municipio, categoria,
       categoria  || 'general',
       modo       || 'antioquia',
       query      || null,
-      hash
+      hash,
+      score
     ]
   );
 
@@ -39,13 +42,14 @@ function obtenerNoticias({ desde, hasta, subregion, municipio, modo, limite = 20
   let sql    = 'SELECT * FROM noticias WHERE 1=1';
   const args = [];
 
-if (desde)  { sql += ' AND DATE(fecha) >= ?'; args.push(desde); }
-  if (hasta)  { sql += ' AND DATE(fecha) <= ?'; args.push(hasta); }
+  if (desde)     { sql += ' AND DATE(fecha) >= ?'; args.push(desde); }
+  if (hasta)     { sql += ' AND DATE(fecha) <= ?'; args.push(hasta); }
   if (subregion && subregion !== 'todas') { sql += ' AND subregion = ?'; args.push(subregion); }
-if (municipio) { sql += ' AND municipio LIKE ?'; args.push(municipio); }
-  if (modo)       { sql += ' AND modo = ?';      args.push(modo); }
+  if (municipio) { sql += ' AND municipio LIKE ?'; args.push(municipio); }
+  if (modo)      { sql += ' AND modo = ?'; args.push(modo); }
 
-  sql += ' ORDER BY fecha DESC LIMIT ?';
+  // Ordenar primero por score (fuentes confiables arriba), luego por fecha
+  sql += ' ORDER BY score DESC, fecha DESC LIMIT ?';
   args.push(limite);
 
   return db.all(sql, args);
@@ -58,7 +62,7 @@ function contarPorCategoria({ desde, hasta, modo }) {
 
   if (desde) { sql += ' AND DATE(fecha) >= ?'; args.push(desde); }
   if (hasta) { sql += ' AND DATE(fecha) <= ?'; args.push(hasta); }
-  if (modo)  { sql += ' AND modo = ?';   args.push(modo); }
+  if (modo)  { sql += ' AND modo = ?'; args.push(modo); }
 
   sql += ' GROUP BY categoria ORDER BY total DESC';
   return db.all(sql, args);

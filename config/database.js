@@ -39,13 +39,23 @@ async function initDB() {
       modo        TEXT    DEFAULT 'antioquia',
       query       TEXT    DEFAULT NULL,
       hash        TEXT    NOT NULL UNIQUE,
+      score       INTEGER DEFAULT 1,
       creado_en   TEXT    DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_fecha     ON noticias(fecha);
     CREATE INDEX IF NOT EXISTS idx_subregion ON noticias(subregion);
     CREATE INDEX IF NOT EXISTS idx_categoria ON noticias(categoria);
     CREATE INDEX IF NOT EXISTS idx_hash      ON noticias(hash);
+    CREATE INDEX IF NOT EXISTS idx_score     ON noticias(score);
   `);
+
+  // Migración segura: agregar columna score si no existe en DB ya creadas
+  try {
+    _db.run(`ALTER TABLE noticias ADD COLUMN score INTEGER DEFAULT 1`);
+    console.log('[DB] Columna score agregada por migración');
+  } catch(e) {
+    // Ya existe — normal en DBs nuevas o ya migradas
+  }
 
   guardarEnDisco();
   return _db;
