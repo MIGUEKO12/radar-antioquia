@@ -8,7 +8,7 @@ const Estado = {
   paginaPanel:0, filtroCatPanel:'todas',
 };
 
-const ITEMS_PANEL     = 16;
+const ITEMS_PANEL      = 16;
 const ITEMS_POR_PAGINA = 20;
 const $ = id => document.getElementById(id);
 
@@ -17,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
   $('fecha-actual').textContent = new Date().toLocaleDateString('es-CO', {
     weekday:'long', day:'numeric', month:'long', year:'numeric'
   });
-
   window.onSubregionClick  = entrarSubregion;
   window.onMunicipioClick  = entrarMunicipio;
   window.onVolverAntioquia = () => {
@@ -29,15 +28,12 @@ document.addEventListener('DOMContentLoaded', () => {
     cargarDashboard();
     cargarTendenciaIndep();
   };
-
   iniciarTooltipOP();
   cargarDashboard();
   cargarTendenciaIndep();
-
   setInterval(() => {
     if (Estado.modo === 'antioquia' && !Estado.subregionActual) cargarDashboard();
   }, 5 * 60 * 1000);
-
   const qLibre = $('q-libre');
   if (qLibre) qLibre.addEventListener('keypress', e => { if(e.key==='Enter') ejecutarBusquedaLibre(); });
 });
@@ -53,21 +49,14 @@ function contarCategoriasLocal(noticias) {
 
 // ================= SECCIÓN: TOOLTIP ORDEN PÚBLICO =================
 function iniciarTooltipOP() {}
-
 function mostrarTooltipOP(el) {
-  const tt = $('tooltip-op');
-  if (!tt) return;
+  const tt = $('tooltip-op'); if (!tt) return;
   const rect = el.getBoundingClientRect();
   tt.style.top  = (rect.bottom + 8) + 'px';
   tt.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
   tt.classList.add('visible');
 }
-
-function ocultarTooltipOP() {
-  const tt = $('tooltip-op');
-  if (tt) tt.classList.remove('visible');
-}
-
+function ocultarTooltipOP() { const tt = $('tooltip-op'); if (tt) tt.classList.remove('visible'); }
 window.mostrarTooltipOP = mostrarTooltipOP;
 window.ocultarTooltipOP = ocultarTooltipOP;
 
@@ -80,23 +69,18 @@ async function cargarDashboard() {
     const hasta = $('fecha-hasta').value;
     if (desde) params.append('desde', desde);
     if (hasta) params.append('hasta', hasta);
-
     const res  = await fetch(`/api/dashboard?${params}`);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
-
     actualizarMetricas(data.resumen.porCategoria);
     actualizarMapa(data.mapa, data.recientes, data.resumen.total);
     actualizarClasificacion(data.resumen.porCategoria, data.resumen.total);
-
     Estado.todasNoticiasPanel = data.recientes;
     Estado.paginaPanel        = 0;
     Estado.filtroCatPanel     = 'todas';
     resetFiltrosBotones();
     renderNoticiasPanel();
-
     actualizarImpactoConModal(data.resumen.porCategoria);
-
     $('ultima-actualizacion').textContent =
       'Actualizado: ' + new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
   } catch (err) {
@@ -112,7 +96,6 @@ function actualizarMapa(subregiones, noticias, total) {
   subregiones.forEach(s => { datosParaMapa[s.subregion] = s.total; });
   window._totalNoticias = total || 0;
   window.MapaRadar.pintarSubregiones(datosParaMapa, noticias || []);
-
   const conSubregion = subregiones.reduce((s, m) => s + m.total, 0);
   const sinUbicar    = (total || 0) - conSubregion;
   const btnSin       = $('btn-sin-ubicar');
@@ -137,18 +120,17 @@ function actualizarMetricas(categorias) {
   if ($('m-total')) $('m-total').textContent = total;
   if ($('m-gen'))   $('m-gen').textContent   = totalGeneral;
   if ($('m-op'))    $('m-op').textContent    = (mapa.orden_publico||0)+(mapa.desplazamiento||0);
-  if ($('m-hom'))   $('m-hom').textContent   = mapa.homicidio          || 0;
-  if ($('m-fem'))   $('m-fem').textContent   = mapa.feminicidio         || 0;
-  if ($('m-min'))   $('m-min').textContent   = mapa.mineria             || 0;
-  if ($('m-cli'))   $('m-cli').textContent   = mapa.clima               || 0;
-  if ($('m-vp'))    $('m-vp').textContent    = mapa.violencia_politica  || 0;
+  if ($('m-hom'))   $('m-hom').textContent   = mapa.homicidio         || 0;
+  if ($('m-fem'))   $('m-fem').textContent   = mapa.feminicidio        || 0;
+  if ($('m-min'))   $('m-min').textContent   = mapa.mineria            || 0;
+  if ($('m-cli'))   $('m-cli').textContent   = mapa.clima              || 0;
+  if ($('m-vp'))    $('m-vp').textContent    = mapa.violencia_politica || 0;
 }
 
 // ================= SECCIÓN: CLASIFICACIÓN =================
 function actualizarClasificacion(categorias, totalGeneral, contexto = null) {
   if ($('clasificacion-titulo'))
     $('clasificacion-titulo').textContent = contexto ? `Clasificación — ${contexto}` : 'Clasificación de noticias';
-
   const config = [
     { key:'general',            nombre:'General',            color:'#757575' },
     { key:'orden_publico',      nombre:'Orden público',      color:'#e53935', infoBtn:true },
@@ -158,13 +140,11 @@ function actualizarClasificacion(categorias, totalGeneral, contexto = null) {
     { key:'clima',              nombre:'Clima',              color:'#1565c0' },
     { key:'violencia_politica', nombre:'Violencia política', color:'#6a1b9a' },
   ];
-
   const catMap = {};
   categorias.forEach(c => { catMap[c.categoria] = c.total; });
   catMap.orden_publico = (catMap.orden_publico||0) + (catMap.desplazamiento||0);
   catMap.general = (catMap.general||0) + (catMap.salud||0) + (catMap.infraestructura||0);
   const maxTotal = Math.max(...config.map(c => catMap[c.key]||0), 1);
-
   if ($('clasificacion-lista')) {
     $('clasificacion-lista').innerHTML = config.map(c => {
       const total = catMap[c.key] || 0;
@@ -215,90 +195,6 @@ function resetFiltrosBotones() {
 const BADGES    = { homicidio:'badge-rojo',feminicidio:'badge-rosa',orden_publico:'badge-rojo',desplazamiento:'badge-rojo',mineria:'badge-amber',clima:'badge-azul',salud:'badge-verde',violencia_politica:'badge-morado',general:'badge-gris' };
 const NOMBRES_C = { homicidio:'Homicidio',feminicidio:'Feminicidio',orden_publico:'Orden público',desplazamiento:'Desplaz.',mineria:'Minería',clima:'Clima',salud:'Salud',violencia_politica:'Viol. política',general:'General' };
 
-
-// ================= SECCIÓN: AGRUPADOR DE NOTICIAS =================
-const PALABRAS_VACIAS = new Set([
-  'el','la','los','las','un','una','unos','unas','de','del','al','a','en',
-  'y','o','e','pero','que','con','por','para','como','se','su','sus',
-  'lo','le','les','es','son','fue','fueron','hay','han','ha','mas',
-  'este','esta','estos','estas','ese','esa','esos','esas','sobre',
-  'tras','ante','bajo','desde','hasta','entre','durante','mediante',
-  'nuevo','nueva','nuevos','nuevas','gran','grande','primer','primera',
-  'dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez',
-  'hoy','ayer','manana','semana','mes','ano','vez','caso','casos'
-]);
-
-function normalizarTituloGrupo(titulo) {
-  return titulo.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter(p => p.length > 3 && !PALABRAS_VACIAS.has(p));
-}
-
-function calcularSimilitud(pA, pB) {
-  if (!pA.length || !pB.length) return 0;
-  const sA = new Set(pA), sB = new Set(pB);
-  const inter = [...sA].filter(p => sB.has(p)).length;
-  return inter / new Set([...sA, ...sB]).size;
-}
-
-function agruparNoticias(noticias, umbral = 0.45) {
-  if (!noticias || !noticias.length) return [];
-  const proc = noticias.map(n => ({
-    n, palabras: normalizarTituloGrupo(n.titulo),
-    dia: n.fecha ? n.fecha.substring(0, 10) : ''
-  }));
-  const usadas = new Set();
-  const grupos = [];
-  for (let i = 0; i < proc.length; i++) {
-    if (usadas.has(i)) continue;
-    const grupo = { principal: proc[i].n, fuentes: [] };
-    usadas.add(i);
-    for (let j = i+1; j < proc.length; j++) {
-      if (usadas.has(j) || proc[i].dia !== proc[j].dia) continue;
-      if (calcularSimilitud(proc[i].palabras, proc[j].palabras) >= umbral) {
-        grupo.fuentes.push(proc[j].n);
-        usadas.add(j);
-      }
-    }
-    grupos.push(grupo);
-  }
-  return grupos;
-}
-
-function abrirModalFuentes(idx) {
-  const grupo = window._gruposActuales?.[idx];
-  if (!grupo || !grupo.fuentes.length) return;
-  const todas = [grupo.principal, ...grupo.fuentes];
-  const html = todas.map((n, i) => {
-    const badge = BADGES[n.categoria] || 'badge-gris';
-    const cat   = NOMBRES_C[n.categoria] || n.categoria;
-    const fecha = new Date(n.fecha).toLocaleDateString('es-CO', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-    const muni  = n.municipio ? `<span class="noticia-mun">${n.municipio}</span>` : '';
-    return `<div class="modal-noticia-item">
-      <div class="modal-noticia-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div>
-      <div class="modal-noticia-meta"><span class="badge ${badge}">${cat}</span>${muni}<span class="noticia-fecha">${fecha}</span></div>
-    </div>`;
-  }).join('');
-  const modal = document.getElementById('modal-fuentes');
-  const lista = document.getElementById('modal-fuentes-lista');
-  const count = document.getElementById('modal-fuentes-count');
-  if (!modal || !lista || !count) return;
-  count.textContent = `${todas.length} fuentes cubren este evento`;
-  lista.innerHTML = html;
-  modal.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-}
-window.abrirModalFuentes = abrirModalFuentes;
-
-function cerrarModalFuentes() {
-  const modal = document.getElementById('modal-fuentes');
-  if (modal) modal.style.display = 'none';
-  document.body.style.overflow = '';
-}
-window.cerrarModalFuentes = cerrarModalFuentes;
-
 function renderNoticiasPanel() {
   const fuente = Estado.todasNoticiasPanel;
   if (Estado.filtroCatPanel === 'todas') {
@@ -308,17 +204,14 @@ function renderNoticiasPanel() {
   } else {
     Estado.noticiasPanel = fuente.filter(n => n.categoria === Estado.filtroCatPanel);
   }
-
   const total  = Estado.noticiasPanel.length;
   const inicio = Estado.paginaPanel * ITEMS_PANEL;
   const fin    = Math.min(inicio + ITEMS_PANEL, total);
   const pagina = Estado.noticiasPanel.slice(inicio, fin);
   const maxPag = Math.max(0, Math.ceil(total / ITEMS_PANEL) - 1);
-
   if ($('not-nav-info')) $('not-nav-info').textContent = total > 0 ? `${inicio+1}–${fin} de ${total}` : 'Sin noticias';
   if ($('btn-not-ant')) $('btn-not-ant').disabled = Estado.paginaPanel <= 0;
   if ($('btn-not-sig')) $('btn-not-sig').disabled = Estado.paginaPanel >= maxPag;
-
   renderListaNoticias(pagina, $('noticias-lista'));
   renderPaginacionPanel(maxPag);
 }
@@ -356,6 +249,7 @@ function navegarNoticias(dir) {
   window.scrollTo({ top: scrollY, behavior: 'instant' });
 }
 
+// ================= SECCIÓN: RENDER LISTA NOTICIAS =================
 function renderListaNoticias(noticias, contenedor) {
   if (!contenedor) return;
   if (!noticias || noticias.length === 0) {
@@ -368,14 +262,21 @@ function renderListaNoticias(noticias, contenedor) {
     violencia_politica:'#6a1b9a', salud:'#2e7d32', general:'#9e9e9e'
   };
   contenedor.innerHTML = noticias.map(n => {
-    const badge  = BADGES[n.categoria]    || 'badge-gris';
-    const catNom = NOMBRES_C[n.categoria] || n.categoria;
-    const fecha  = new Date(n.fecha).toLocaleDateString('es-CO', { day:'numeric',month:'short',hour:'2-digit',minute:'2-digit' });
-    const muni   = n.municipio ? `<span class="noticia-mun">${n.municipio}</span>` : '';
-    const color  = COLORES_BORDE[n.categoria] || '#9e9e9e';
+    const badge   = BADGES[n.categoria]    || 'badge-gris';
+    const catNom  = NOMBRES_C[n.categoria] || n.categoria;
+    const fecha   = new Date(n.fecha).toLocaleDateString('es-CO', { day:'numeric',month:'short',hour:'2-digit',minute:'2-digit' });
+    const muni    = n.municipio ? `<span class="noticia-mun">${n.municipio}</span>` : '';
+    const color   = COLORES_BORDE[n.categoria] || '#9e9e9e';
+    // Extraer nombre del medio del título (parte después del último " - ")
+    const partes  = n.titulo.split(' - ');
+    const fuente  = partes.length > 1 ? partes[partes.length - 1].trim() : '';
+    const badgeFuente = fuente ? `<span class="badge-fuente">${fuente}</span>` : '';
     return `<div class="noticia-item" style="border-left-color:${color}">
       <div class="noticia-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div>
-     <div class="noticia-meta"><div class="noticia-meta-izq"><span class="badge ${badge}">${catNom}</span>${muni}</div><span class="noticia-fecha">${fecha}</span></div>
+      <div class="noticia-meta">
+        <div class="noticia-meta-izq"><span class="badge ${badge}">${catNom}</span>${muni}${badgeFuente}</div>
+        <span class="noticia-fecha">${fecha}</span>
+      </div>
     </div>`;
   }).join('');
 }
@@ -488,22 +389,18 @@ async function buscarEnAntioquia() {
     const res  = await fetch(`/api/noticias/buscar?${params}`);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
-
     const qNorm = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     const filtradas = data.noticias.filter(n => {
       const tNorm = (n.titulo||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       return tNorm.includes(qNorm);
     });
-
     Estado.noticiasFiltradasMapa = filtradas;
     const ubicadas  = filtradas.filter(n => n.subregion && n.subregion !== 'general');
     const sinUbicar = filtradas.filter(n => !n.subregion || n.subregion === 'general');
     const conteoSubregion = {};
     ubicadas.forEach(n => { conteoSubregion[n.subregion] = (conteoSubregion[n.subregion]||0)+1; });
-
     window.MapaRadar.pintarSubregionesPorCategoria(conteoSubregion, ubicadas);
     if (sinUbicar.length > 0) window.MapaRadar.pintarSinUbicar(sinUbicar.length, sinUbicar);
-
     actualizarNoticias(filtradas, `Antioquia — "${q}" (${filtradas.length})`);
     actualizarClasificacion(contarCategoriasLocal(filtradas), filtradas.length, q);
     actualizarMetricas(contarCategoriasLocal(filtradas));
@@ -530,19 +427,14 @@ function setPeriodo(periodo, btn) {
 
 // ================= SECCIÓN: AVISO SIN UBICAR =================
 function mostrarAviso(ubicadas, sinUbicar, noticias) {
-  const aviso = $('aviso-ubicacion');
-  if (!aviso) return;
+  const aviso = $('aviso-ubicacion'); if (!aviso) return;
   if (sinUbicar > 0) {
     aviso.innerHTML = `<span>${ubicadas} ubicadas en el mapa · <b style="cursor:pointer;text-decoration:underline" onclick="abrirModalSinUbicar()">${sinUbicar} sin municipio — ver todas</b></span>`;
     aviso.style.display = 'flex';
     window._noticiassinUbicar = noticias;
   } else { ocultarAviso(); }
 }
-
-function ocultarAviso() {
-  const aviso = $('aviso-ubicacion');
-  if (aviso) aviso.style.display = 'none';
-}
+function ocultarAviso() { const aviso = $('aviso-ubicacion'); if (aviso) aviso.style.display = 'none'; }
 
 // ================= SECCIÓN: MODAL SIN UBICAR =================
 function abrirModalSinUbicar() {
@@ -558,13 +450,11 @@ function abrirModalSinUbicar() {
   $('modal-sin-ubicar').style.display     = 'flex';
   document.body.style.overflow            = 'hidden';
 }
-
 function cerrarModal() {
   const modal = $('modal-sin-ubicar');
   if (modal) modal.style.display = 'none';
   document.body.style.overflow = '';
 }
-
 document.addEventListener('click', e => { if (e.target === $('modal-sin-ubicar')) cerrarModal(); });
 
 // ================= SECCIÓN: MODO LIBRE =================
@@ -582,7 +472,7 @@ function setModo(modo) {
   if (esAntioquia) {
     cargarDashboard();
   } else {
-    $('libre-lista').innerHTML     = '<p style="color:#9e9e9e;font-size:13px;padding:20px 0;text-align:center">Ingresa un término y presiona Buscar.</p>';
+    $('libre-lista').innerHTML      = '<p style="color:#9e9e9e;font-size:13px;padding:20px 0;text-align:center">Ingresa un término y presiona Buscar.</p>';
     $('libre-paginacion').innerHTML = '';
     $('libre-resumen').textContent  = '';
   }
@@ -621,13 +511,14 @@ function renderPaginaLibre() {
   const total  = Estado.noticiasLibre.length;
   $('libre-resumen').textContent = `${total} noticias — mostrando ${inicio+1}–${Math.min(fin,total)}`;
   $('libre-lista').innerHTML = pagina.map(n => {
-    const badge = BADGES[n.categoria]   ||'badge-gris';
-    const cat   = NOMBRES_C[n.categoria]||n.categoria;
-    const fecha = new Date(n.fecha).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const badge  = BADGES[n.categoria]   ||'badge-gris';
+    const cat    = NOMBRES_C[n.categoria]||n.categoria;
+    const fecha  = new Date(n.fecha).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const muni   = n.municipio ? `<span class="noticia-mun">${n.municipio}</span>` : '';
     const partes = n.titulo.split(' - ');
-const fuente = partes.length > 1 ? partes[partes.length - 1].trim() : '';
-const badgeFuente = fuente ? `<span class="badge-fuente">${fuente}</span>` : '';
-    return `<div class="noticia-libre"><div class="nl-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div><div class="nl-meta"><span class="badge ${badge}">${cat}</span>${muni}<div class="noticia-meta-izq"><span class="badge ${badge}">${catNom}</span>${muni}${badgeFuente}</div>
+    const fuente = partes.length > 1 ? partes[partes.length - 1].trim() : '';
+    const badgeFuente = fuente ? `<span class="badge-fuente">${fuente}</span>` : '';
+    return `<div class="noticia-libre"><div class="nl-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div><div class="nl-meta"><span class="badge ${badge}">${cat}</span>${muni}${badgeFuente}<span class="noticia-fecha">${fecha}</span></div></div>`;
   }).join('');
   renderPaginacion();
 }
@@ -654,8 +545,7 @@ function irPagina(n) {
 let chartTendencia=null, chartImpacto=null;
 
 function actualizarTendencia(datos) {
-  const ctx = $('chart-tendencia');
-  if (!ctx) return;
+  const ctx = $('chart-tendencia'); if (!ctx) return;
   const labels  = datos.map(d => new Date(d.dia+'T12:00:00').toLocaleDateString('es-CO',{day:'numeric',month:'short'}));
   const valores = datos.map(d => d.total);
   const color   = EstadoTendencia?.color || '#43a047';
@@ -703,8 +593,7 @@ window.setTendenciaCategoria = setTendenciaCategoria;
 
 // ================= SECCIÓN: IMPACTO MEDIÁTICO =================
 function actualizarImpactoConModal(categorias) {
-  const ctx = $('chart-impacto');
-  if (!ctx) return;
+  const ctx = $('chart-impacto'); if (!ctx) return;
   const principales = ['general','orden_publico','homicidio','feminicidio','mineria','clima','violencia_politica'];
   const colores  = { general:'#9e9e9e',orden_publico:'#e53935',homicidio:'#c62828',feminicidio:'#880e4f',mineria:'#e65100',clima:'#1565c0',violencia_politica:'#6a1b9a' };
   const nombresC = { general:'General',orden_publico:'Orden público',homicidio:'Homicidio',feminicidio:'Feminicidio',mineria:'Minería',clima:'Clima',violencia_politica:'Viol. política' };
