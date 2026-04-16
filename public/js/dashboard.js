@@ -273,10 +273,10 @@ function renderListaNoticias(noticias, contenedor) {
     const badgeFuente = fuente ? `<span class="badge-fuente">${fuente}</span>` : '';
     return `<div class="noticia-item" style="border-left-color:${color}">
       <div class="noticia-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div>
-     <div class="noticia-meta">
-  <div class="noticia-meta-izq"><span class="badge ${badge}">${catNom}</span>${muni}</div>
-  <div class="noticia-meta-der">${badgeFuente}<span class="noticia-fecha">${fecha}</span></div>
-</div>
+      <div class="noticia-meta">
+        <div class="noticia-meta-izq"><span class="badge ${badge}">${catNom}</span>${muni}${badgeFuente}</div>
+        <span class="noticia-fecha">${fecha}</span>
+      </div>
     </div>`;
   }).join('');
 }
@@ -515,10 +515,7 @@ function renderPaginaLibre() {
     const cat    = NOMBRES_C[n.categoria]||n.categoria;
     const fecha  = new Date(n.fecha).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
     const muni   = n.municipio ? `<span class="noticia-mun">${n.municipio}</span>` : '';
-    const partes = n.titulo.split(' - ');
-    const fuente = partes.length > 1 ? partes[partes.length - 1].trim() : '';
-    const badgeFuente = fuente ? `<span class="badge-fuente">${fuente}</span>` : '';
-    return `<div class="noticia-libre"><div class="nl-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div><div class="nl-meta"><span class="badge ${badge}">${cat}</span>${muni}${badgeFuente}<span class="noticia-fecha">${fecha}</span></div></div>`;
+    return `<div class="noticia-libre"><div class="nl-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div><div class="nl-meta"><span class="badge ${badge}">${cat}</span>${muni}<span class="noticia-fecha">${fecha}</span></div></div>`;
   }).join('');
   renderPaginacion();
 }
