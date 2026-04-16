@@ -240,11 +240,10 @@ function calcularSimilitud(pA, pB) {
   if (!pA.length || !pB.length) return 0;
   const sA = new Set(pA), sB = new Set(pB);
   const inter = [...sA].filter(p => sB.has(p)).length;
-  // Usar el mínimo en lugar de la unión — más permisivo
-  return inter / Math.min(sA.size, sB.size);
+  return inter / new Set([...sA, ...sB]).size;
 }
 
-function agruparNoticias(noticias, umbral = 0.25) {
+function agruparNoticias(noticias, umbral = 0.45) {
   if (!noticias || !noticias.length) return [];
   const proc = noticias.map(n => ({
     n, palabras: normalizarTituloGrupo(n.titulo),
@@ -368,21 +367,15 @@ function renderListaNoticias(noticias, contenedor) {
     desplazamiento:'#e53935', mineria:'#e65100', clima:'#1565c0',
     violencia_politica:'#6a1b9a', salud:'#2e7d32', general:'#9e9e9e'
   };
-  const grupos = agruparNoticias(noticias);
-  window._gruposActuales = grupos;
-  contenedor.innerHTML = grupos.map((g, idx) => {
-    const n = g.principal;
+  contenedor.innerHTML = noticias.map(n => {
     const badge  = BADGES[n.categoria]    || 'badge-gris';
     const catNom = NOMBRES_C[n.categoria] || n.categoria;
     const fecha  = new Date(n.fecha).toLocaleDateString('es-CO', { day:'numeric',month:'short',hour:'2-digit',minute:'2-digit' });
     const muni   = n.municipio ? `<span class="noticia-mun">${n.municipio}</span>` : '';
     const color  = COLORES_BORDE[n.categoria] || '#9e9e9e';
-    const fuentes = g.fuentes.length > 0
-      ? `<span class="badge-fuentes" onclick="event.preventDefault();abrirModalFuentes(${idx})">📰 ${g.fuentes.length + 1} fuentes</span>`
-      : '';
     return `<div class="noticia-item" style="border-left-color:${color}">
       <div class="noticia-titulo"><a href="${n.link}" target="_blank" rel="noopener">${n.titulo}</a></div>
-      <div class="noticia-meta"><span class="badge ${badge}">${catNom}</span>${muni}<span class="noticia-fecha">${fecha}</span>${fuentes}</div>
+      <div class="noticia-meta"><span class="badge ${badge}">${catNom}</span>${muni}<span class="noticia-fecha">${fecha}</span></div>
     </div>`;
   }).join('');
 }
