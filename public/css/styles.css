@@ -190,7 +190,7 @@ button { cursor:pointer; font-family:inherit; }
 
 /* ================= SECCIÓN: GRÁFICOS ================= */
 .graficos-section { padding:0 24px 24px; }
-.graficos-grid    { display:grid;grid-template-columns:1.6fr 1fr;gap:16px; }
+.graficos-grid    { display:grid;grid-template-columns:1fr;gap:16px; }
 .grafico-card     { background:var(--blanco);border-radius:var(--radio);padding:16px;box-shadow:var(--sombra); }
 .grafico-header   { display:flex;justify-content:space-between;align-items:center;margin-bottom:12px; }
 .grafico-titulo   { font-size:13px;font-weight:700;color:var(--texto);text-transform:uppercase;letter-spacing:0.04em; }

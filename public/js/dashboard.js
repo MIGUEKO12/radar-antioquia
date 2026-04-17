@@ -80,7 +80,6 @@ async function cargarDashboard() {
     Estado.filtroCatPanel     = 'todas';
     resetFiltrosBotones();
     renderNoticiasPanel();
-    actualizarImpactoConModal(data.resumen.porCategoria);
     $('ultima-actualizacion').textContent =
       'Actualizado: ' + new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
   } catch (err) {
@@ -402,7 +401,6 @@ async function buscarEnAntioquia() {
     actualizarNoticias(filtradas, `Antioquia — "${q}" (${filtradas.length})`);
     actualizarClasificacion(contarCategoriasLocal(filtradas), filtradas.length, q);
     actualizarMetricas(contarCategoriasLocal(filtradas));
-    actualizarImpactoConModal(contarCategoriasLocal(filtradas));
     mostrarAviso(ubicadas.length, sinUbicar.length, sinUbicar);
   } catch(err) { console.error('[BuscarAntioquia]', err); }
   finally { mostrarSpinner(false); }
@@ -496,7 +494,6 @@ async function ejecutarBusquedaLibre() {
     renderPaginaLibre();
     const cats = contarCategoriasLocal(data.noticias);
     actualizarMetricas(cats);
-    actualizarImpactoConModal(cats);
   } catch(err) {
     $('libre-lista').innerHTML = '<p style="color:#e53935;padding:20px">Error al buscar.</p>';
   } finally { mostrarSpinner(false); }
@@ -537,20 +534,80 @@ function irPagina(n) {
 }
 
 // ================= SECCIÓN: GRÁFICOS =================
-let chartTendencia=null, chartImpacto=null;
+let chartTendencia=null;
+
+// Guardamos los datos de tendencia para usarlos al hacer clic
+let _datosTendencia = [];
 
 function actualizarTendencia(datos) {
   const ctx = $('chart-tendencia'); if (!ctx) return;
+  _datosTendencia = datos; // Guardar para acceder al hacer clic
   const labels  = datos.map(d => new Date(d.dia+'T12:00:00').toLocaleDateString('es-CO',{day:'numeric',month:'short'}));
   const valores = datos.map(d => d.total);
   const color   = EstadoTendencia?.color || '#43a047';
   if (chartTendencia) chartTendencia.destroy();
   chartTendencia = new Chart(ctx, {
     type:'line',
-    data:{ labels, datasets:[{ label:'Noticias',data:valores,borderColor:color,backgroundColor:color+'18',fill:true,tension:0.35,pointRadius:4,pointBackgroundColor:color,borderWidth:2 }] },
-    options:{ responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:11},precision:0}}} }
+    data:{ labels, datasets:[{ label:'Noticias',data:valores,borderColor:color,backgroundColor:color+'18',fill:true,tension:0.35,pointRadius:6,pointBackgroundColor:color,borderWidth:2,pointHoverRadius:9 }] },
+    options:{
+      responsive:true,
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ label: ctx => ` ${ctx.parsed.y} noticias — clic para ver` } }
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:11}}},
+        y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:11},precision:0}}
+      },
+      onClick:(e, els) => {
+        if (!els.length) return;
+        const idx  = els[0].index;
+        const dia  = _datosTendencia[idx]?.dia;
+        const cat  = EstadoTendencia.categoria;
+        if (dia) abrirModalPorDia(dia, cat);
+      }
+    }
   });
+  ctx.style.cursor = 'pointer';
 }
+
+// Abrir modal con noticias de un día específico y categoría
+async function abrirModalPorDia(dia, categoria) {
+  const color  = { todas:'#43a047',general:'#757575',orden_publico:'#e53935',homicidio:'#c62828',feminicidio:'#880e4f',mineria:'#e65100',clima:'#1565c0',violencia_politica:'#6a1b9a' }[categoria] || '#43a047';
+  const nombre = { todas:'Todas las categorías',general:'General',orden_publico:'Orden público',homicidio:'Homicidio',feminicidio:'Feminicidio',mineria:'Minería',clima:'Clima',violencia_politica:'Violencia política' }[categoria] || categoria;
+  const fechaLabel = new Date(dia+'T12:00:00').toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  $('modal-cat-dot').style.background  = color;
+  $('modal-cat-titulo').textContent    = nombre;
+  $('modal-cat-subtitulo').textContent = fechaLabel;
+  $('modal-cat-lista').innerHTML       = '<p style="text-align:center;padding:40px;color:#9ca3af">Cargando...</p>';
+  $('modal-cat-buscador').value        = '';
+  $('modal-categoria').style.display  = 'flex';
+  document.body.style.overflow        = 'hidden';
+
+  try {
+    const params = new URLSearchParams({ desde: dia, hasta: dia });
+    if (categoria !== 'todas') params.append('categoria', categoria);
+    const res  = await fetch(`/api/noticias/categoria?${params}`);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    // Si es "todas", traer sin filtro de categoría
+    let noticias = data.noticias;
+    if (categoria === 'todas') {
+      const res2  = await fetch(`/api/dashboard?periodo=hoy&desde=${dia}&hasta=${dia}`);
+      const data2 = await res2.json();
+      noticias = data2.ok ? data2.recientes : noticias;
+    }
+    modalState.noticias=noticias; modalState.filtradas=noticias;
+    modalState.paginaModal=1; modalState.actual=0; modalState.categoria=categoria; modalState.color=color;
+    modalState.totalPaginasM=Math.ceil(noticias.length/ITEMS_MODAL);
+    $('modal-cat-subtitulo').textContent=`${noticias.length} noticias · ${fechaLabel}`;
+    renderModalLista(); actualizarNavModal();
+    setTimeout(()=>$('modal-cat-buscador')?.focus(),100);
+  } catch(err) {
+    $('modal-cat-lista').innerHTML='<p style="text-align:center;padding:40px;color:#e53935">Error al cargar.</p>';
+  }
+}
+window.abrirModalPorDia = abrirModalPorDia;
 
 const EstadoTendencia = { dias:7, categoria:'todas' };
 
@@ -586,31 +643,8 @@ function setTendenciaCategoria(cat, btn) {
 window.setTendenciaIndep     = setTendenciaIndep;
 window.setTendenciaCategoria = setTendenciaCategoria;
 
-// ================= SECCIÓN: IMPACTO MEDIÁTICO =================
-function actualizarImpactoConModal(categorias) {
-  const ctx = $('chart-impacto'); if (!ctx) return;
-  const principales = ['general','orden_publico','homicidio','feminicidio','mineria','clima','violencia_politica'];
-  const colores  = { general:'#9e9e9e',orden_publico:'#e53935',homicidio:'#c62828',feminicidio:'#880e4f',mineria:'#e65100',clima:'#1565c0',violencia_politica:'#6a1b9a' };
-  const nombresC = { general:'General',orden_publico:'Orden público',homicidio:'Homicidio',feminicidio:'Feminicidio',mineria:'Minería',clima:'Clima',violencia_politica:'Viol. política' };
-  const mapaRaw = {};
-  categorias.forEach(c => { mapaRaw[c.categoria] = (mapaRaw[c.categoria]||0)+c.total; });
-  mapaRaw.orden_publico = (mapaRaw.orden_publico||0)+(mapaRaw.desplazamiento||0);
-  Object.keys(mapaRaw).forEach(cat => {
-    if (!principales.includes(cat) && cat!=='desplazamiento') mapaRaw.general=(mapaRaw.general||0)+mapaRaw[cat];
-  });
-  const activas = principales.map(key => ({ categoria:key, total:mapaRaw[key]||0 })).filter(c => c.total>0);
-  if (chartImpacto) chartImpacto.destroy();
-  chartImpacto = new Chart(ctx, {
-    type:'doughnut',
-    data:{ labels:activas.map(c=>nombresC[c.categoria]), datasets:[{ data:activas.map(c=>c.total), backgroundColor:activas.map(c=>colores[c.categoria]), hoverOffset:10,borderWidth:2,borderColor:'#ffffff' }] },
-    options:{ responsive:true,cutout:'58%',
-      plugins:{ legend:{ position:'right',labels:{font:{size:11},boxWidth:12,padding:8}, onClick:(e,li)=>{ const cat=activas[li.index]?.categoria; if(cat) abrirModalCategoria(cat); } },
-        tooltip:{ callbacks:{ label:ctx=>{ const t=ctx.parsed,s=activas.reduce((a,c)=>a+c.total,0); return ` ${t} noticias (${((t/s)*100).toFixed(1)}%) — clic para ver`; } } } },
-      onClick:(e,els)=>{ if(!els.length) return; const cat=activas[els[0].index]?.categoria; if(cat) abrirModalCategoria(cat); }
-    }
-  });
-  ctx.style.cursor='pointer';
-}
+// ================= SECCIÓN: IMPACTO MEDIÁTICO (eliminado) =================
+function actualizarImpactoConModal() {} // Mantenida por compatibilidad
 
 // ================= SECCIÓN: MODAL CATEGORÍA =================
 const ITEMS_MODAL = 10;
@@ -776,7 +810,6 @@ window.irPaginaModal         = irPaginaModal;
 window.filtrarModalNoticias  = filtrarModalNoticias;
 window.abrirNoticiaActual    = abrirNoticiaActual;
 window.seleccionarNoticia    = seleccionarNoticia;
-window.actualizarImpactoConModal = actualizarImpactoConModal;
 window.abrirModalSinUbicar   = abrirModalSinUbicar;
 window.cerrarModal           = cerrarModal;
 window.abrirModalSubcategorias  = abrirModalSubcategorias;
