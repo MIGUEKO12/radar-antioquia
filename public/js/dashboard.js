@@ -585,18 +585,12 @@ async function abrirModalPorDia(dia, categoria) {
   document.body.style.overflow        = 'hidden';
 
   try {
-    const params = new URLSearchParams({ desde: dia, hasta: dia });
-    if (categoria !== 'todas') params.append('categoria', categoria);
-    const res  = await fetch(`/api/noticias/categoria?${params}`);
-    const data = await res.json();
+    // El endpoint ahora acepta categoria='todas' para traer todas sin filtro
+    const params = new URLSearchParams({ categoria, desde: dia, hasta: dia });
+    const res    = await fetch(`/api/noticias/categoria?${params}`);
+    const data   = await res.json();
     if (!data.ok) throw new Error(data.error);
-    // Si es "todas", traer sin filtro de categoría
-    let noticias = data.noticias;
-    if (categoria === 'todas') {
-      const res2  = await fetch(`/api/dashboard?periodo=hoy&desde=${dia}&hasta=${dia}`);
-      const data2 = await res2.json();
-      noticias = data2.ok ? data2.recientes : noticias;
-    }
+    const noticias = data.noticias || [];
     modalState.noticias=noticias; modalState.filtradas=noticias;
     modalState.paginaModal=1; modalState.actual=0; modalState.categoria=categoria; modalState.color=color;
     modalState.totalPaginasM=Math.ceil(noticias.length/ITEMS_MODAL);

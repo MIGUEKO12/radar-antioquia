@@ -4,11 +4,9 @@ const { buscarLibre, recolectarAntioquia } = require('../../services/recolector'
 
 // ================= SECCIÓN: HELPER PERÍODO =================
 function resolverPeriodo(query) {
-  // Las fechas en DB ya están en hora Colombia, usamos fecha local del servidor
+  // Fecha de hoy en formato YYYY-MM-DD simple
   const ahora  = new Date();
-  // Restamos 5 horas para obtener hora Colombia
-  const co     = new Date(ahora.getTime() - (5 * 60 * 60 * 1000));
-  const hoyStr = co.toISOString().split('T')[0];
+  const hoyStr = ahora.toISOString().split('T')[0];
 
   const hasta = query.hasta || hoyStr;
   let desde   = query.desde;
@@ -16,13 +14,13 @@ function resolverPeriodo(query) {
   if (!desde) {
     switch (query.periodo) {
       case 'semana': {
-        const s = new Date(co);
+        const s = new Date(ahora);
         s.setDate(s.getDate() - 7);
         desde = s.toISOString().split('T')[0];
         break;
       }
       case 'mes': {
-        const m = new Date(co);
+        const m = new Date(ahora);
         m.setDate(m.getDate() - 30);
         desde = m.toISOString().split('T')[0];
         break;
@@ -32,9 +30,16 @@ function resolverPeriodo(query) {
     }
   }
 
+  // Garantizamos que desde <= hasta siempre
+  if (desde > hasta) {
+    desde = hasta;
+  }
+
+  console.log(`[Período] periodo="${query.periodo}" desde="${desde}" hasta="${hasta}"`);
   return { desde, hasta };
 }
-// ================= SECCIÓN: DASHBOARD PRINCIPAL =================
+
+
 async function getDashboard(req, res) {
   try {
     const { desde, hasta } = resolverPeriodo(req.query);
@@ -68,7 +73,7 @@ async function getSubregion(req, res) {
     const { id }           = req.params;
     const { desde, hasta } = resolverPeriodo(req.query);
 
-    const noticias   = NoticiaModel.obtenerNoticias({ desde, hasta, subregion:id, modo:'antioquia', limite:2000 });
+    const noticias   = NoticiaModel.obtenerNoticias({ desde, hasta, subregion:id, modo:'antioquia', limite:200 });
     const municipios = NoticiaModel.contarPorMunicipio({ subregion:id, desde, hasta });
     const categorias = NoticiaModel.contarPorCategoria({ desde, hasta, modo:'antioquia' });
 
@@ -108,7 +113,7 @@ async function getMunicipio(req, res) {
 
     // Buscamos noticias de ese municipio exacto
     const noticias = NoticiaModel.obtenerNoticias({
-      desde, hasta, municipio: municipio.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''), modo:'antioquia', limite:2000
+      desde, hasta, municipio: municipio.toLowerCase(), modo:'antioquia', limite:100
     });
 
     res.json({ ok:true, municipio, total:noticias.length, noticias });
@@ -157,9 +162,11 @@ async function getNoticiasCategoria(req, res) {
     }
 
     // Sin límite — traemos TODAS las noticias de esa categoría
-    const noticias = NoticiaModel.obtenerNoticias({
-      desde, hasta, limite: 2000
-    }).filter(n => n.categoria === categoria);
+    // Si categoria === 'todas', traemos todas sin filtrar por categoría
+    const todasNoticias = NoticiaModel.obtenerNoticias({ desde, hasta, modo:'antioquia', limite: 2000 });
+    const noticias = categoria === 'todas'
+      ? todasNoticias
+      : todasNoticias.filter(n => n.categoria === categoria);
 
     res.json({ ok: true, categoria, total: noticias.length, noticias });
 
@@ -169,48 +176,4 @@ async function getNoticiasCategoria(req, res) {
   }
 }
 
-// ================= SECCIÓN: TENDENCIA POR CATEGORÍA =================
-async function getTendenciaCategoria(req, res) {
-  try {
-    const dias = Math.min(parseInt(req.query.dias) || 7, 365);
-
-    const categoria = String(req.query.categoria || 'todas').slice(0, 50);
-
-    const tendencia = NoticiaModel.tendenciaPorDia({ dias, modo: 'antioquia' });
-
-    // Si piden una categoría específica, filtramos por ella en la DB
-    if (categoria !== 'todas') {
-      const diasData = [];
-      for (let i = dias - 1; i >= 0; i--) {
-        const co    = new Date(new Date().getTime() - (5 * 60 * 60 * 1000));
-        const fecha = new Date(co);
-        fecha.setDate(fecha.getDate() - i);
-        const diaStr = fecha.toISOString().split('T')[0];
-
-        const desde = diaStr;
-        const hasta = diaStr;
-        const cats  = NoticiaModel.contarPorCategoria({ desde, hasta, modo: 'antioquia' });
-
-        // orden_publico incluye desplazamiento
-        let total = 0;
-        if (categoria === 'orden_publico') {
-          const op = cats.find(c => c.categoria === 'orden_publico');
-          const dp = cats.find(c => c.categoria === 'desplazamiento');
-          total = (op?.total || 0) + (dp?.total || 0);
-        } else {
-          total = cats.find(c => c.categoria === categoria)?.total || 0;
-        }
-
-        diasData.push({ dia: diaStr, total });
-      }
-      return res.json({ ok: true, dias, categoria, tendencia: diasData });
-    }
-
-    res.json({ ok: true, dias, categoria: 'todas', tendencia });
-  } catch (err) {
-    console.error('[TendenciaCategoria]', err);
-    res.status(500).json({ ok: false, error: 'Error al cargar tendencia' });
-  }
-}
-
-module.exports = { getDashboard, getSubregion, getMunicipio, getNoticiasCategoria, getTendenciaCategoria, buscarNoticias, recolectarManual };
+module.exports = { getDashboard, getSubregion, getMunicipio, getNoticiasCategoria, buscarNoticias, recolectarManual };
