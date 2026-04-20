@@ -1,4 +1,4 @@
-// ================= SECCIÓN: DEPENDENCIAS =================
+ // ================= SECCIÓN: DEPENDENCIAS =================
 const { db }  = require('../config/database'); // Instancia sql.js
 const crypto  = require('crypto');             // Para hash de deduplicación
 const { obtenerPuntuacionFuente } = require('../config/fuentes'); // Scoring de fuentes
@@ -115,6 +115,42 @@ function estadisticasDB() {
   };
 }
 
+// ================= SECCIÓN: RECLASIFICACIÓN MASIVA =================
+// Recorre todas las noticias existentes y aplica los filtros actuales
+// Útil para limpiar la DB después de mejorar clasificador o filtro
+function reclasificarTodo() {
+  const { clasificarNoticia } = require('../services/clasificador');
+  const { aplicarFiltro }     = require('../services/filtro');
+  const { detectarUbicacion } = require('../config/municipios');
+
+  const noticias = db.all('SELECT id, titulo, link, categoria FROM noticias', []);
+  let actualizadas = 0;
+  let sinCambio    = 0;
+
+  for (const n of noticias) {
+    try {
+      const categoriaBase = clasificarNoticia(n.titulo);
+      const categoriaNew  = aplicarFiltro(n.titulo, categoriaBase, n.link || '');
+      const { subregion, municipio } = detectarUbicacion(n.titulo);
+
+      if (categoriaNew !== n.categoria) {
+        db.run(
+          `UPDATE noticias SET categoria = ?, subregion = ?, municipio = ? WHERE id = ?`,
+          [categoriaNew, subregion || 'general', municipio || null, n.id]
+        );
+        actualizadas++;
+      } else {
+        sinCambio++;
+      }
+    } catch(e) {
+      console.error(`[Reclasificar] Error en id ${n.id}:`, e.message);
+    }
+  }
+
+  console.log(`[Reclasificar] ${actualizadas} actualizadas, ${sinCambio} sin cambio`);
+  return { actualizadas, sinCambio, total: noticias.length };
+}
+
 // ================= SECCIÓN: EXPORTACIONES =================
 module.exports = {
   insertarNoticia,
@@ -125,5 +161,6 @@ module.exports = {
   tendenciaPorDia,
   limpiarAntiguos,
   vacuumDB,
-  estadisticasDB
+  estadisticasDB,
+  reclasificarTodo
 };
