@@ -1,11 +1,17 @@
 // ================= SECCIÓN: DICCIONARIO DE CATEGORÍAS =================
 const CATEGORIAS = {
 
-  // Violencia física — máxima prioridad por impacto en convivencia
+  // Violencia física — máxima prioridad
   homicidio: [
     'homicidio', 'asesinado', 'asesinato', 'muerto a tiros', 'baleado',
     'cadaver', 'cadáver', 'cuerpo sin vida', 'hallado muerto', 'ultimado',
-    'sicario', 'disparos', 'mató', 'mataron', 'ejecutado'
+    'sicario', 'disparos', 'mató', 'mataron', 'ejecutado',
+    // Tipos de vulneración específicos
+    'homicidio múltiple', 'homicidio multiple', 'masacre',
+    'homicidio lider social', 'homicidio líder social',
+    'homicidio funcionario', 'homicidio fuerza publica',
+    'homicidio fuerza pública', 'policía muerto', 'policia muerto',
+    'soldado muerto', 'militar muerto', 'agente muerto',
   ],
 
   // Violencia de género
@@ -40,19 +46,44 @@ const CATEGORIAS = {
     'ataque politico', 'ataque político',
     'candidato herido', 'atentan contra candidato',
     'panfleto amenaza candidato', 'seguridad candidatos',
-    'preocupacion candidatos', 'preocupación candidatos',
-    'amenazas directas a candidatos', 'preocupacion por amenazas',
-    'acusado de amenazar'
+    'amenazas directas a candidatos',
   ],
 
   // Orden público — conflicto armado y seguridad territorial
   orden_publico: [
-    'eln', 'farc', 'clan del golfo', 'agc', 'autodefensas',
-    'ataque armado', 'hostigamiento', 'enfrentamiento', 'combates',
-    'guerrilla', 'paramilitares', 'extorsion', 'extorsión',
-    'secuestro', 'desaparicion forzada', 'desaparición', 'operativo',
-    'captura', 'detenidos', 'narcotráfico', 'narcotrafico', 'droga',
-    'disidencias', 'grupo armado', 'amenaza', 'reclutamiento'
+    // Grupos armados principales
+    'eln', 'farc', 'clan del golfo', 'agc', 'egc', 'autodefensas',
+    'disidencias', 'guerrilla', 'paramilitares',
+    'ejercito libertadores de colombia',
+    // Grupos urbanos Medellín y Antioquia
+    'la terraza', 'los chatas', 'los triana', 'pachelly',
+    'los del bajo', 'trianon', 'trianón', 'caicedo', 'la sierra', 'robledo',
+    'la miel', 'san pablo', 'los del 20', 'carne rancia', 'el salacho',
+    'los machacos', 'halcones ii', 'los pacheco', 'los de las flores',
+    'el polvorin', 'el polvorín', 'los juaquinillos', 'mondongueros',
+    'oficina del doce', 'el oasis', 'union subversiva', 'unión subversiva',
+    'los marihuanos', 'el mesa', 'gdco', 'gdo',
+    'frente 36', 'frente 18', 'frente 37',
+    // Artefactos y minas
+    'mina antipersonal', 'activacion map', 'activación map',
+    'map activada', 'mina activada', 'mina antipersona',
+    // Tipos de vulneración (convivencia y seguridad)
+    'ataque armado', 'hostigamiento', 'enfrentamiento', 'combates', 'combate',
+    'extorsion', 'extorsión', 'vacuna extorsion', 'cobro extorsivo',
+    'secuestro', 'desaparicion forzada', 'desaparición forzada',
+    'operativo', 'captura', 'detenidos', 'narcotráfico', 'narcotrafico',
+    'grupo armado', 'amenaza', 'reclutamiento', 'reclutamiento de menores',
+    'reclutamiento de nna', 'menores reclutados',
+    // Tipos de vulneración específicos
+    'asonada', 'confinamiento', 'artefacto explosivo', 'cilindro bomba',
+    'granada', 'explosivo', 'bomba', 'terrorismo',
+    'proselitismo ilegal', 'panfleto amenazante', 'panfleto intimidatorio',
+    'captura cabecilla', 'cabecilla capturado', 'neutralizado cabecilla',
+    'neutralizacion cabecilla', 'neutralización cabecilla',
+    'extincion de dominio', 'extinción de dominio',
+    'lavado de activos', 'bienes incautados',
+    'droga', 'narco', 'cargamento', 'cocaina', 'cocaína', 'heroina',
+    'herramienta', 'hallazgo de armas', 'caleta de armas',
   ],
 
   // Desplazamiento
@@ -119,7 +150,4 @@ function clasificarNoticia(titulo) {
 }
 
 // ================= SECCIÓN: EXPORTACIONES =================
-module.exports = {
-  CATEGORIAS,
-  clasificarNoticia
-};
+module.exports = { CATEGORIAS, clasificarNoticia };

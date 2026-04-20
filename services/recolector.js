@@ -170,7 +170,7 @@ async function fetchNoticias(query, modo = 'antioquia') {
 
     const { subregion, municipio } = detectarUbicacion(titulo);
     const categoriaBase = clasificarNoticia(titulo);
-    const categoria     = aplicarFiltro(titulo, categoriaBase); // Corrección de contexto
+    const categoria     = aplicarFiltro(titulo, categoriaBase, link); // Corrección de contexto + filtro URL
 
     return { titulo, link, fecha, subregion, municipio, categoria, modo, query };
   });
