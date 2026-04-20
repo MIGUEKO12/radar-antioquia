@@ -10,7 +10,7 @@ const AdminState = {
 let _keysPressed = {};
 document.addEventListener('keydown', e => {
   _keysPressed[e.key] = true;
-  if (_keysPressed['Control'] && _keysPressed['Shift'] && _keysPressed['A']) {
+  if (_keysPressed['Control'] && _keysPressed['Shift'] && _keysPressed['Z']) {
     e.preventDefault();
     if (AdminState.activo) {
       salirAdmin();
