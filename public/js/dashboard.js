@@ -117,7 +117,7 @@ function actualizarMetricas(categorias) {
   const mapa = {};
   categorias.forEach(c => { mapa[c.categoria] = c.total; });
   const total = categorias.reduce((s,c) => s+c.total, 0);
-  const conTarjeta = ['orden_publico','desplazamiento','homicidio','feminicidio','mineria','clima','violencia_politica'];
+  const conTarjeta = ['orden_publico','desplazamiento','homicidio','feminicidio','mineria','violencia_politica'];
   const totalGeneral = categorias.filter(c => !conTarjeta.includes(c.categoria)).reduce((s,c) => s+c.total, 0);
   if ($('m-total')) $('m-total').textContent = total;
   if ($('m-gen'))   $('m-gen').textContent   = totalGeneral;
@@ -125,7 +125,6 @@ function actualizarMetricas(categorias) {
   if ($('m-hom'))   $('m-hom').textContent   = mapa.homicidio         || 0;
   if ($('m-fem'))   $('m-fem').textContent   = mapa.feminicidio        || 0;
   if ($('m-min'))   $('m-min').textContent   = mapa.mineria            || 0;
-  if ($('m-cli'))   $('m-cli').textContent   = mapa.clima              || 0;
   if ($('m-vp'))    $('m-vp').textContent    = mapa.violencia_politica || 0;
 }
 
@@ -139,7 +138,6 @@ function actualizarClasificacion(categorias, totalGeneral, contexto = null) {
     { key:'homicidio',          nombre:'Homicidio',          color:'#c62828' },
     { key:'feminicidio',        nombre:'Feminicidio',        color:'#880e4f' },
     { key:'mineria',            nombre:'Minería',            color:'#e65100' },
-    { key:'clima',              nombre:'Clima',              color:'#1565c0' },
     { key:'violencia_politica', nombre:'Violencia política', color:'#6a1b9a' },
   ];
   const catMap = {};
@@ -637,7 +635,7 @@ function setTendenciaCategoria(cat, btn) {
   EstadoTendencia.color = {
     todas:'#43a047', general:'#9e9e9e', orden_publico:'#e53935',
     homicidio:'#c62828', feminicidio:'#880e4f', mineria:'#e65100',
-    clima:'#1565c0', violencia_politica:'#6a1b9a'
+    violencia_politica:'#6a1b9a'
   }[cat] || '#43a047';
   cargarTendenciaIndep();
 }

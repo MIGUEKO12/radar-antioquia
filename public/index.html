@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -87,11 +87,7 @@
       <span class="metrica-label">Minería</span>
       <span class="metrica-val" id="m-min">—</span>
     </div>
-    <div class="metrica-card azul"   onclick="filtrarPorCategoria('clima')">
-      <span class="metrica-label">Clima</span>
-      <span class="metrica-val" id="m-cli">—</span>
-    </div>
-    <div class="metrica-card violencia-pol" onclick="filtrarPorCategoria('violencia_politica')">
+<div class="metrica-card violencia-pol" onclick="filtrarPorCategoria('violencia_politica')">
       <span class="metrica-label">Violencia política <span style="font-size:10px;font-weight:400;opacity:0.8">(Colombia)</span></span>
       <span class="metrica-val" id="m-vp">—</span>
     </div>
@@ -110,7 +106,6 @@
         <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('homicidio',this)">Homicidio</button>
         <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('feminicidio',this)">Feminicidio</button>
         <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('mineria',this)">Minería</button>
-        <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('clima',this)">Clima</button>
         <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('general',this)">General</button>
         <button class="filtro-cat-btn" onclick="filtrarNoticiasPanel('violencia_politica',this)">Viol. política</button>
       </div>
@@ -182,7 +177,6 @@
       <button class="filtro-cat-btn" onclick="setTendenciaCategoria('homicidio',this)">Homicidio</button>
       <button class="filtro-cat-btn" onclick="setTendenciaCategoria('feminicidio',this)">Feminicidio</button>
       <button class="filtro-cat-btn" onclick="setTendenciaCategoria('mineria',this)">Minería</button>
-      <button class="filtro-cat-btn" onclick="setTendenciaCategoria('clima',this)">Clima</button>
       <button class="filtro-cat-btn" onclick="setTendenciaCategoria('violencia_politica',this)">Viol. política</button>
     </div>
     <canvas id="chart-tendencia" height="80"></canvas>
