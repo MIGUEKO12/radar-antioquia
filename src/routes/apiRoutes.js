@@ -11,5 +11,8 @@ router.get('/noticias/tendencia',     controller.getTendenciaCategoria);
 router.get('/salud/logs',             controller.getLogs);
 router.post('/noticias/recolectar',   controller.recolectarManual);
 router.post('/admin/reclasificar',    controller.reclasificarDB);
+router.post('/admin/login',           controller.adminLogin);
+router.post('/admin/noticia/categoria', controller.verificarAdminToken, controller.adminCambiarCategoria);
+router.post('/admin/noticia/eliminar',  controller.verificarAdminToken, controller.adminEliminarNoticia);
 
 module.exports = router;
