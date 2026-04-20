@@ -4,8 +4,10 @@ const { buscarLibre, recolectarAntioquia } = require('../../services/recolector'
 
 // ================= SECCIÓN: HELPER PERÍODO =================
 function resolverPeriodo(query) {
+  // Ajustar a hora Colombia (UTC-5) para que "hoy" coincida con la fecha local
   const ahora  = new Date();
-  const hoyStr = ahora.toISOString().split('T')[0];
+  const co     = new Date(ahora.getTime() - (5 * 60 * 60 * 1000));
+  const hoyStr = co.toISOString().split('T')[0];
 
   const hasta = query.hasta || hoyStr;
   let desde   = query.desde;
@@ -13,13 +15,13 @@ function resolverPeriodo(query) {
   if (!desde) {
     switch (query.periodo) {
       case 'semana': {
-        const s = new Date(ahora);
+        const s = new Date(co);
         s.setDate(s.getDate() - 7);
         desde = s.toISOString().split('T')[0];
         break;
       }
       case 'mes': {
-        const m = new Date(ahora);
+        const m = new Date(co);
         m.setDate(m.getDate() - 30);
         desde = m.toISOString().split('T')[0];
         break;
