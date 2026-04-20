@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -440,10 +440,67 @@
 </div>
 
 
+<!-- MODAL LOGIN ADMIN -->
+<div id="modal-admin-login" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
+  <div style="background:white;border-radius:16px;width:100%;max-width:380px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.4);">
+    <div style="background:linear-gradient(135deg,#1b5e20,#43a047);padding:20px 24px;">
+      <h2 style="color:white;font-size:16px;font-weight:700;margin:0">🔐 Panel Administrativo</h2>
+      <p style="color:rgba(255,255,255,0.8);font-size:12px;margin:4px 0 0">Radar de Noticias — Acceso restringido</p>
+    </div>
+    <div style="padding:24px;">
+      <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Contraseña</label>
+      <input type="password" id="admin-password-input"
+        placeholder="Ingresa la contraseña..."
+        style="width:100%;padding:10px 14px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:12px;"
+        onkeypress="if(event.key==='Enter') verificarAdminPassword()">
+      <div id="admin-login-error" style="display:none;color:#e53935;font-size:12px;margin-bottom:10px;">Contraseña incorrecta</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="cerrarLoginAdmin()" style="flex:1;padding:10px;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Cancelar</button>
+        <button onclick="verificarAdminPassword()" style="flex:1;padding:10px;background:#1b5e20;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Entrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR NOTICIA ADMIN -->
+<div id="modal-admin-editar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
+  <div style="background:white;border-radius:16px;width:100%;max-width:520px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.4);">
+    <div style="background:#1b5e20;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="color:white;font-size:15px;font-weight:700;margin:0">✏️ Editar Noticia</h2>
+      <button onclick="cerrarAdminEditar()" style="background:rgba(255,255,255,0.2);border:none;color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;">✕</button>
+    </div>
+    <div style="padding:20px 24px;">
+      <p id="admin-editar-titulo" style="font-size:13px;color:#374151;line-height:1.5;margin-bottom:16px;padding:10px;background:#f8f9fa;border-radius:8px;border-left:3px solid #1b5e20;"></p>
+      <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Cambiar categoría a:</label>
+      <select id="admin-editar-categoria" style="width:100%;padding:10px;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:16px;">
+        <option value="orden_publico">Orden público</option>
+        <option value="homicidio">Homicidio</option>
+        <option value="feminicidio">Feminicidio</option>
+        <option value="mineria">Minería</option>
+        <option value="clima">Clima</option>
+        <option value="violencia_politica">Violencia política</option>
+        <option value="general">General</option>
+      </select>
+      <div style="display:flex;gap:8px;">
+        <button onclick="cerrarAdminEditar()" style="flex:1;padding:10px;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Cancelar</button>
+        <button onclick="guardarCambioCategoria()" style="flex:1;padding:10px;background:#1565c0;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Guardar cambio</button>
+        <button onclick="eliminarNoticia()" style="padding:10px 16px;background:#e53935;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BANNER MODO ADMIN -->
+<div id="banner-admin" style="display:none;position:fixed;bottom:16px;right:16px;z-index:9998;background:#1b5e20;color:white;padding:10px 18px;border-radius:20px;font-size:12px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.3);display:none;align-items:center;gap:8px;">
+  🔐 Modo Admin activo
+  <button onclick="salirAdmin()" style="background:rgba(255,255,255,0.2);border:none;color:white;padding:3px 8px;border-radius:10px;font-size:11px;cursor:pointer;">Salir</button>
+</div>
+
 <!-- SPINNER -->
 <div id="spinner" class="spinner-overlay oculto"><div class="spinner"></div></div>
 
 <script src="js/mapa.js" defer></script>
 <script src="js/dashboard.js" defer></script>
+<script src="js/admin.js" defer></script>
 </body>
 </html>
