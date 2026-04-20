@@ -15,7 +15,7 @@ const { limiterGeneral,
         headersSeguridad }           = require('./middlewares/seguridad');
 const { recolectarAntioquia,
         recolectarHistorico }        = require('../services/recolector');
-const { invalidarCache }             = require('../controllers/dashboardController');
+const { invalidarCache }             = require('./controllers/dashboardController');
 const { limpiarAntiguos,
         vacuumDB,
         estadisticasDB }             = require('../models/NoticiaModel');
