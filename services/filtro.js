@@ -1,4 +1,4 @@
-// ================= SECCIÓN: FILTRO DE CALIDAD DE NOTICIAS =================
+ // ================= SECCIÓN: FILTRO DE CALIDAD DE NOTICIAS =================
 // Este archivo actúa como capa de corrección DESPUÉS del clasificador.
 // No borra noticias — las reclasifica a General si detecta ruido o contexto incorrecto.
 // Se aplica antes de guardar en la DB.
@@ -271,7 +271,8 @@ function aplicarFiltro(titulo, categoria, link = '') {
   if (tNorm.includes('hipopotamo')) return 'general';
 
   // ── KILL-SWITCH GEOGRÁFICO: ciudad externa sin conexión con Antioquia ──────
-  // Si menciona Bogotá, Cali, etc. Y NO menciona ningún municipio de Antioquia → descarte
+  // PRIORIDAD ABSOLUTA — aplica sin importar palabras críticas
+  // Si dice "Bogotá" o "Cali" sin mencionar Antioquia → siempre General
   const mencionaCiudadExterna = CIUDADES_EXTERNAS.some(c =>
     tNorm.includes(c.normalize('NFD').replace(/[̀-ͯ]/g, ''))
   );
