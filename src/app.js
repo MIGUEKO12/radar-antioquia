@@ -15,6 +15,7 @@ const { limiterGeneral,
         headersSeguridad }           = require('./middlewares/seguridad');
 const { recolectarAntioquia,
         recolectarHistorico }        = require('../services/recolector');
+const { invalidarCache }             = require('../controllers/dashboardController');
 const { limpiarAntiguos,
         vacuumDB,
         estadisticasDB }             = require('../models/NoticiaModel');
@@ -97,6 +98,7 @@ cron.schedule(`*/${intervalo} * * * *`, async () => {
     const duracion_ms = Date.now() - inicio;
     console.log(`[CRON] ${r.insertadas} nuevas, ${r.duplicadas} duplicadas (${duracion_ms}ms)`);
     guardarLog({ tipo:'cron', insertadas:r.insertadas, duplicadas:r.duplicadas, duracion_ms });
+    if (r.insertadas > 0) invalidarCache(); // Solo invalida si hubo noticias nuevas
   } catch (err) {
     const duracion_ms = Date.now() - inicio;
     console.error('[CRON] Error:', err.message);
