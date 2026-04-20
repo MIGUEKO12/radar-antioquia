@@ -38,6 +38,47 @@ function esRelevanteParaAntioquia(titulo) {
   });
 }
 
+// ================= SECCIÓN: QUERIES MEDIOS LOCALES =================
+// Búsquedas quirúrgicas por dominio — Google News ya hizo el scraping por nosotros
+const QUERIES_MEDIOS_LOCALES = [
+
+  // ── MINUTO30 — Rey del volumen, orden público Valle de Aburrá ─────────────
+  'site:minuto30.com antioquia OR medellín OR "orden público"',
+  'site:minuto30.com captura OR herido OR baleado OR asesinado OR homicidio',
+  'site:minuto30.com emergencia OR accidente OR incendio OR desastre',
+
+  // ── ALERTA PAISA — Orden público, capturas, asonadas ─────────────────────
+  'site:alertapaisa.com antioquia OR medellín',
+  'site:alertapaisa.com captura OR operativo OR clan OR eln OR pandilla',
+
+  // ── HORA 13 — Equilibrado social y orden público ──────────────────────────
+  'site:h13n.com antioquia OR medellín OR subregión',
+  'site:h13n.com seguridad OR emergencia OR comunidad OR social',
+
+  // ── MIORIENTE — Oriente antioqueño: Rionegro, Marinilla, Altiplano ────────
+  'site:mioriente.com',
+  'site:mioriente.com seguridad OR emergencia OR homicidio OR orden público',
+
+  // ── LA CHIVA DE URABÁ — Zona bananera, puerto, Turbo, Apartadó ───────────
+  'site:lachivadeuraba.com',
+  'site:lachivadeuraba.com seguridad OR emergencia OR clan OR eln',
+
+  // ── ANÁLISIS URBANO — Inteligencia bandas criminales Medellín ────────────
+  'site:analisisurbano.org',
+  'site:analisisurbano.org banda OR estructura OR armada OR criminal OR homicidio',
+
+  // ── IFM NOTICIAS — Política departamental y denuncias ────────────────────
+  'site:ifmnoticias.com antioquia OR medellín',
+  'site:ifmnoticias.com gobernación OR alcaldía OR denuncia OR comunidad',
+
+  // ── TELEANTIOQUIA — Cobertura regional más amplia ─────────────────────────
+  'site:teleantioquia.co antioquia seguridad OR emergencia OR orden público',
+  'site:teleantioquia.co antioquia homicidio OR minería OR desplazamiento',
+
+  // ── ACTUALIDAD ORIENTE — Complemento Oriente antioqueño ──────────────────
+  'site:actualidad.com.co oriente antioqueño OR rionegro OR marinilla',
+];
+
 // ================= SECCIÓN: QUERIES =================
 const QUERIES_ANTIOQUIA = [
 
@@ -168,10 +209,53 @@ async function recolectarAntioquia() {
     }
   }
 
+  // Recolección adicional de medios locales antioqueños
+  try {
+    const locales = await recolectarMediosLocales();
+    insertadas += locales.insertadas;
+    duplicadas += locales.duplicadas;
+    errores    += locales.errores;
+  } catch (err) {
+    console.error('[CRON] Error en medios locales:', err.message);
+  }
+
   const resumen = { insertadas, duplicadas, filtradas, errores, timestamp: new Date().toISOString() };
   console.log(`[CRON] Ciclo completo:`, resumen);
 
   return resumen;
+}
+
+// ================= SECCIÓN: RECOLECCIÓN MEDIOS LOCALES =================
+async function recolectarMediosLocales() {
+  let insertadas = 0;
+  let duplicadas = 0;
+  let errores    = 0;
+
+  console.log('[MEDIOS] Iniciando recolección de medios locales...');
+
+  for (const query of QUERIES_MEDIOS_LOCALES) {
+    try {
+      const noticias = await fetchNoticias(query, 'antioquia');
+
+      for (const noticia of noticias) {
+        const esVP = noticia.categoria === 'violencia_politica';
+        if (!esVP && !esRelevanteParaAntioquia(noticia.titulo)) continue;
+        const esNueva = insertarNoticia(noticia);
+        if (esNueva) insertadas++;
+        else         duplicadas++;
+      }
+
+      // Delay de 1.5s entre queries para no saturar Google
+      await new Promise(r => setTimeout(r, 1500));
+
+    } catch (err) {
+      errores++;
+      console.error(`[MEDIOS] Error en "${query}":`, err.message);
+    }
+  }
+
+  console.log(`[MEDIOS] Completado — ${insertadas} nuevas, ${duplicadas} duplicadas, ${errores} errores`);
+  return { insertadas, duplicadas, errores };
 }
 
 // ================= SECCIÓN: BÚSQUEDA LIBRE =================
@@ -259,6 +343,7 @@ async function recolectarHistorico() {
 module.exports = {
   fetchNoticias,
   recolectarAntioquia,
+  recolectarMediosLocales,
   recolectarHistorico,
   buscarLibre
 };
