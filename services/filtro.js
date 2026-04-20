@@ -1,246 +1,171 @@
- // ================= SECCIÓN: FILTRO DE CALIDAD DE NOTICIAS =================
-// Importar índice de municipios para el kill-switch geográfico
+// ================= SECCIÓN: FILTRO DE CALIDAD DE NOTICIAS =================
 const { MUNICIPIO_A_SUBREGION } = require('../config/municipios');
-// Este archivo actúa como capa de corrección DESPUÉS del clasificador.
-// No borra noticias — las reclasifica a General si detecta ruido o contexto incorrecto.
-// Se aplica antes de guardar en la DB.
 
-// ================= SECCIÓN: CIUDADES FUERA DE ANTIOQUIA (Kill-switch) =================
-// Si el título menciona estas ciudades SIN mencionar un municipio de Antioquia → descarte
-// El medio puede ser antioqueño pero la noticia no es del territorio
+// ================= SECCIÓN: CIUDADES FUERA DE ANTIOQUIA =================
 const CIUDADES_EXTERNAS = [
-  // Ciudades específicas que no generan ambigüedad con municipios de Antioquia
-  'bogota', 'bogotá', 'cundinamarca',
+  'bogota', 'bogota', 'cundinamarca',
   'cali', 'valle del cauca',
-  'barranquilla',
-  'cartagena de indias',
-  'bucaramanga',
-  'cucuta', 'cúcuta', 'norte de santander',
-  'pereira', 'risaralda',
-  'manizales',
-  'ibague', 'ibagué', 'tolima',
-  'villavicencio', 'meta',
-  'pasto', 'narino', 'nariño',
-  'neiva', 'huila',
-  'santa marta',
-  'popayan', 'popayán', 'cauca',
-  'monteria', 'montería',
-  // NO incluir: magdalena, córdoba, bolívar, caldas, armenia, quindío
-  // porque son también municipios o subregiones de Antioquia
+  'barranquilla', 'cartagena de indias',
+  'bucaramanga', 'cucuta', 'norte de santander',
+  'pereira', 'risaralda', 'manizales',
+  'ibague', 'tolima', 'villavicencio', 'meta',
+  'pasto', 'narino', 'neiva', 'huila',
+  'santa marta', 'popayan', 'cauca', 'monteria',
 ];
 
-// Términos adicionales de Antioquia que no están en el índice de municipios
 const TERMINOS_ANTIOQUIA_EXTRA = [
-  'antioquia', 'uraba', 'urabá', 'bajo cauca', 'nordeste antioque',
-  'suroeste antioque', 'occidente antioque', 'valle de aburrá',
-  'magdalena medio antioque', 'gobernacion de antioquia',
-  'gobernación de antioquia',
+  'antioquia', 'uraba', 'bajo cauca', 'nordeste',
+  'suroeste', 'occidente', 'valle de aburrá', 'aburra',
+  'magdalena medio', 'gobernacion de antioquia',
 ];
 
-// Función que verifica si el texto menciona algún municipio de Antioquia
-// Usa el índice completo de 125 municipios del config/municipios.js
 function esTituloDeAntioquia(tNorm) {
-  // Verificar municipios del índice completo
   for (const municipio of Object.keys(MUNICIPIO_A_SUBREGION)) {
-    const munNorm = municipio.normalize('NFD').replace(/[̀-ͯ]/g, '');
-    const regex = new RegExp(`\b${munNorm}\b`, 'i');
-    if (regex.test(tNorm)) return true;
+    const munNorm = municipio.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (tNorm.includes(munNorm)) return true;
   }
-  // Verificar términos extra de Antioquia
   return TERMINOS_ANTIOQUIA_EXTRA.some(t =>
-    tNorm.includes(t.normalize('NFD').replace(/[̀-ͯ]/g, ''))
+    tNorm.includes(t.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
   );
 }
 
-// ================= SECCIÓN: PATRONES DE RECOMPENSA Y ANÁLISIS =================
-// Recompensas son decisiones administrativas, no hechos de orden público
-// Análisis estadísticos son reportajes, no alertas
+// ================= SECCIÓN: PATRONES ADMINISTRATIVOS =================
 const PATRONES_ADMINISTRATIVOS = [
-  // Recompensas
   ['recompensa', 'alias'], ['recompensa', 'captura'],
   ['aumenta recompensa'], ['aumentan recompensa'],
-  ['aumentó recompensa'], ['aumento recompensa'],
-  ['ofrece recompensa', 'alias'], ['ofrecen recompensa', 'alias'],
-  ['gobierno aumenta'], ['gobierno ofrece recompensa'],
-  // Análisis estadísticos y reportajes de datos
+  ['aumento recompensa'], ['aumentó recompensa'],
+  ['ofrece recompensa', 'alias'], ['gobierno ofrece recompensa'],
   ['tiene el', '%'], ['tiene el', 'por ciento'],
-  ['¿que hay detras'], ['que hay detras'],
-  ['¿que hay detrás'], ['que hay detrás'],
+  ['que hay detras'], ['que hay detrás'],
   ['los desafios de'], ['los desafíos de'],
   ['el panorama de'], ['panorama de seguridad'],
   ['cifras de'], ['estadisticas de'], ['estadísticas de'],
   ['los numeros de'], ['los números de'],
   ['el balance de'], ['balance de homicidios'],
-  ['cuantos homicidios'], ['cuántos homicidios'],
-  ['tasa de homicidios'], ['indice de violencia'], ['índice de violencia'],
+  ['cuantos homicidios'], ['tasa de homicidios'],
+  ['indice de violencia'], ['índice de violencia'],
 ];
 
-// ================= SECCIÓN: LISTA NEGRA DE URLs =================
-// Si el link contiene estas rutas, es una página administrativa — no es noticia
+// ================= SECCIÓN: LISTA NEGRA URLs =================
 const URL_RUIDO = [
   '/tags/', '/tag/', '/category/', '/categoria/', '/author/', '/autor/',
-  '/login', '/registro', '/suscripcion', '/suscripción',
-  '/quienes-somos', '/quiénes-somos', '/acerca-de', '/about',
-  '/terminos', '/términos', '/politica-de-privacidad', '/contacto',
+  '/login', '/registro', '/suscripcion', '/quienes-somos', '/acerca-de',
+  '/about', '/terminos', '/politica-de-privacidad', '/contacto',
   '/newsletter', '/publicidad', '/aviso-legal',
 ];
 
-// ================= SECCIÓN: GRUPOS ARMADOS PRIORITARIOS =================
-// Si el título menciona cualquiera de estos grupos, sube a orden_publico
-// Son los grupos de mayor interés para el Gobernador de Antioquia
+// ================= SECCIÓN: GRUPOS ARMADOS =================
 const GRUPOS_ARMADOS = [
-  // Grandes organizaciones
   'clan del golfo', 'eln', 'disidencias de las farc', 'disidencias farc',
   'agc', 'egc', 'ejercito libertadores de colombia',
-  // Grupos urbanos Medellín
-  'la terraza', 'los chatas', 'los triana', 'pachelly', 'la union', 'la unión',
-  'los del bajo', 'trianon', 'trianón', 'caicedo', 'la sierra', 'robledo',
+  'la terraza', 'los chatas', 'los triana', 'pachelly', 'la union', 'la union',
+  'los del bajo', 'trianon', 'caicedo', 'la sierra', 'robledo',
   'la miel', 'san pablo', 'los del 20', 'carne rancia', 'el salacho',
   'los machacos', 'halcones ii', 'los pacheco', 'los de las flores',
-  'el polvorin', 'el polvorín', 'los juaquinillos', 'mondongueros',
-  'oficina del doce', 'el oasis', 'union subversiva', 'unión subversiva',
-  'los marihuanos', 'el mesa', 'gdco', 'gdo', 'la terraza',
-  // Frentes guerrilleros
+  'el polvorin', 'los juaquinillos', 'mondongueros',
+  'oficina del doce', 'el oasis', 'union subversiva',
+  'los marihuanos', 'el mesa', 'gdco', 'gdo',
   'frente 36', 'frente 18', 'frente 37',
 ];
 
-// ================= SECCIÓN: PATRONES DE OPINIÓN Y POLÍTICA =================
-// Noticias donde el hecho NO ocurrió — son declaraciones, peticiones o anuncios
-// Estas van a General sin importar qué palabras clave tengan
+// ================= SECCIÓN: PATRONES OPINIÓN =================
 const PATRONES_OPINION = [
-  // Peticiones y solicitudes
-  ['pide', 'seguridad'], ['pide', 'más seguridad'], ['pide', 'mas seguridad'],
+  ['pide', 'seguridad'], ['pide', 'mas seguridad'],
   ['solicita', 'seguridad'], ['exige', 'seguridad'], ['piden', 'seguridad'],
-  ['reclama', 'seguridad'], ['clama', 'seguridad'],
-  // Advertencias y alertas sin hecho
   ['advierte', 'riesgo'], ['alerta', 'posible'], ['alerta sobre'],
   ['advierten', 'riesgo'], ['autoridades advierten'],
-  // Recompensas y anuncios
-  ['ofrece recompensa'], ['ofrecen recompensa'], ['recompensa por información'],
-  ['recompensa por informacion'],
-  // Ruedas de prensa e informes sin hecho
+  ['ofrece recompensa'], ['ofrecen recompensa'], ['recompensa por informacion'],
   ['rueda de prensa'], ['informe oficial'], ['balance de seguridad'],
-  ['rendición de cuentas'], ['rendicion de cuentas'],
-  // Quejas ciudadanas
-  ['comunidad denuncia falta'], ['vecinos piden'], ['habitantes piden'],
-  ['residentes exigen'], ['ciudadanos piden'],
-  // Declaraciones de funcionarios
+  ['rendicion de cuentas'], ['comunidad denuncia falta'],
+  ['vecinos piden'], ['habitantes piden'], ['ciudadanos piden'],
   ['gobernador pide'], ['alcalde pide'], ['ministro pide'],
-  ['gobierno pide'], ['gobierno exige'], ['policía pide'], ['policia pide'],
+  ['gobierno pide'], ['gobierno exige'], ['policia pide'],
   ['fiscal pide'], ['presidente pide'],
-  ['gobernador exigió'], ['gobernador exigio'], ['gobernador pidió'],
-  ['alcalde exigió'], ['alcalde exigio'], ['alcalde pidió'],
-  ['ministro exigió'], ['ministro exigio'],
-  ['fiscal exigió'], ['fiscal exigio'],
-  // Solicitudes de capturas y órdenes — son declaraciones, no hechos
-  ['exigió', 'orden de captura'], ['exigio', 'orden de captura'],
-  ['pidió', 'orden de captura'], ['pidio', 'orden de captura'],
-  ['solicitó', 'orden de captura'], ['solicito', 'orden de captura'],
-  ['reactivar', 'orden de captura'], ['reactivar', 'captura'],
+  ['gobernador exigio'], ['gobernador pidio'],
+  ['alcalde exigio'], ['alcalde pidio'],
+  ['exigio', 'orden de captura'], ['pidio', 'orden de captura'],
+  ['solicito', 'orden de captura'], ['reactivar', 'orden de captura'],
   ['pide', 'captura'], ['exige', 'captura'], ['solicita', 'captura'],
-  ['piden', 'captura contra'], ['exigen', 'captura contra'],
-  ['pidió', 'captura'], ['exigió', 'captura'],
+  ['piden', 'captura contra'], ['pidio', 'captura'], ['exigio', 'captura'],
 ];
 
 // ================= SECCIÓN: PALABRAS RETROSPECTIVAS =================
-// Noticias que hablan de hechos del PASADO disfrazados de actuales
-// Aunque tengan palabras de orden público, van a General
-// porque el Gobernador no debe confundirlas con alertas de hoy
 const PALABRAS_RETROSPECTIVAS = [
-  // Reconstrucción de hechos pasados
-  'así fue', 'asi fue', 'así fue como', 'asi fue como',
-  'así ocurrió', 'asi ocurrio', 'así sucedió', 'asi sucedio',
-  'reconstrucción', 'reconstruccion', 'reconstruyen',
-  // Videos e imágenes reveladas después
-  'revelan video', 'revelan videos', 'video inédito', 'video inedito',
-  'imágenes inéditas', 'imagenes ineditas', 'fotos inéditas',
-  'video desconocido', 'videos desconocidos', 'material inédito',
-  'nuevas imágenes', 'nuevas imagenes',
-  // Aniversarios y memorias
-  'hace un año', 'hace dos años', 'hace tres años',
-  'un año después', 'dos años después', 'tres años después',
-  'un año despues', 'dos años despues', 'tres años despues',
-  'aniversario', 'conmemoración', 'conmemoracion',
-  'en memoria', 'a un año', 'a dos años',
-  // Informes especiales y reportajes históricos
-  'historia de', 'el caso de', 'crónica de', 'cronica de',
-  'especial investigativo', 'informe especial',
-  'lo que no se supo', 'lo que no sabia', 'lo que no sabía',
-  'la verdad detrás', 'la verdad detras', 'detrás del crimen',
-  'detras del crimen', 'la historia detrás',
+  'asi fue', 'asi fue como', 'asi ocurrio', 'asi sucedio',
+  'reconstruccion', 'reconstruyen',
+  'revelan video', 'revelan videos', 'video inedito',
+  'imagenes ineditas', 'fotos ineditas',
+  'video desconocido', 'videos desconocidos', 'material inedito',
+  'nuevas imagenes', 'hace un ano', 'hace dos anos', 'hace tres anos',
+  'un ano despues', 'dos anos despues', 'aniversario', 'conmemoracion',
+  'en memoria', 'a un ano', 'a dos anos',
+  'el caso de', 'cronica de', 'especial investigativo',
+  'lo que no se supo', 'lo que no sabia',
+  'la verdad detras', 'detras del crimen', 'la historia detras',
 ];
 
-// ================= SECCIÓN: PALABRAS CRÍTICAS (no se pueden bajar a General) =================
+// ================= SECCIÓN: PALABRAS CRÍTICAS =================
 const PALABRAS_CRITICAS = [
-  // Homicidio
-  'homicidio', 'asesinado', 'asesinato', 'mató', 'mataron', 'baleado',
+  'homicidio', 'asesinado', 'asesinato', 'mato', 'mataron', 'baleado',
   'cuerpo sin vida', 'hallado muerto', 'ultimado', 'sicario', 'ejecutado',
-  // Feminicidio
   'feminicidio', 'femicidio', 'mujer asesinada',
-  // Violencia real
   'masacre', 'secuestro', 'desplazamiento masivo', 'atentado',
   'combate', 'enfrentamiento armado', 'mina antipersonal',
-  // Violencia política real
   'candidato asesinado', 'candidato muerto', 'candidato herido',
-  'lider social asesinado', 'líder social asesinado'
+  'lider social asesinado',
 ];
 
-// ================= SECCIÓN: LISTA NEGRA — COMBINACIONES DE RUIDO =================
+// ================= SECCIÓN: GRUPOS RUIDO =================
 const GRUPOS_RUIDO = [
-  ['fútbol', 'futbol', 'gol', 'partido', 'liga betplay', 'marcador',
-   'empate', 'derrota', 'victoria deportiva', 'campeón', 'torneo',
-   'ciclismo', 'etapa', 'pelotón', 'medalla', 'olimpiadas'],
-  ['farándula', 'farandula', 'chisme', 'celebridad', 'famoso',
-   'álbum', 'album', 'concierto', 'artista musical', 'cantante',
-   'documental', 'estreno', 'serie de tv', 'película', 'temporada',
-   'reality', 'programa de televisión', 'novela', 'actor', 'actriz'],
-  ['bolsa de valores', 'acciones', 'inversión empresarial',
-   'centro logístico', 'millones de medicamentos', 'distribución farmacéutica',
+  ['futbol', 'gol', 'partido', 'liga betplay', 'marcador',
+   'empate', 'derrota', 'victoria deportiva', 'campeon', 'torneo',
+   'ciclismo', 'etapa', 'peloton', 'medalla', 'olimpiadas'],
+  ['farandula', 'chisme', 'celebridad', 'famoso',
+   'album', 'concierto', 'artista musical', 'cantante',
+   'estreno', 'serie de tv', 'pelicula', 'temporada',
+   'reality', 'programa de television', 'novela', 'actor', 'actriz'],
+  ['bolsa de valores', 'acciones', 'inversion empresarial',
    'cooperativa', 'supermercado', 'retail'],
   ['pasaporte', 'sistema operativo de pasaportes', 'falla en sistema',
-   'registro civil', 'notaría', 'pico y placa', 'impuesto predial'],
-  ['hipopótamo', 'hipopótamos', 'hipopotamo', 'hipopotamos'],
+   'registro civil', 'notaria', 'pico y placa', 'impuesto predial'],
+  ['hipopotamo', 'hipopotamos'],
 ];
 
-// ================= SECCIÓN: PALABRAS NEGRAS INDIVIDUALES =================
 const PALABRAS_NEGRAS_INDIVIDUALES = [
-  'hipopótamo', 'hipopótamos', 'hipopotamo', 'hipopotamos',
-  'horóscopo', 'horoscopo',
+  'hipopotamo', 'hipopotamos', 'horoscopo',
   'receta de cocina', 'ingredientes para',
   'liga betplay en vivo', 'en vivo online partido',
   'resumen y goles', 'resultado del partido'
 ];
 
-// ================= SECCIÓN: REGLAS DE RECLASIFICACIÓN =================
+// ================= SECCIÓN: REGLAS RECLASIFICACION =================
 const REGLAS_RECLASIFICACION = [
   {
     categoriaActual: 'orden_publico',
     patronesTitulo: [
-      ['respondió', 'amenaza'], ['reaccionó', 'amenaza'],
-      ['declaró', 'amenaza'], ['dijo', 'amenaza'],
-      ['opinó', 'amenaza'], ['respondió', 'petro'],
-      ['bravucón'], ['polémica', 'declaraciones'],
-      ['debate', 'político'], ['falla en sistema'],
-      ['sistema operativo'], ['pasaporte'], ['trámite'],
+      ['respondio', 'amenaza'], ['reacciono', 'amenaza'],
+      ['declaro', 'amenaza'], ['dijo', 'amenaza'],
+      ['opino', 'amenaza'], ['respondio', 'petro'],
+      ['bravucon'], ['polemica', 'declaraciones'],
+      ['debate', 'politico'], ['falla en sistema'],
+      ['sistema operativo'], ['pasaporte'], ['tramite'],
     ],
     nuevaCategoria: 'general'
   },
   {
     categoriaActual: 'orden_publico',
     patronesTitulo: [
-      ['operativo', 'minería'], ['operativo', 'mineria'],
-      ['operativo', 'dragas'], ['destruidas', 'dragas'],
-      ['incautadas', 'dragas'], ['minería ilegal', 'captura'],
-      ['minería ilegal', 'operativo'],
+      ['operativo', 'mineria'], ['operativo', 'dragas'],
+      ['destruidas', 'dragas'], ['incautadas', 'dragas'],
+      ['mineria ilegal', 'captura'], ['mineria ilegal', 'operativo'],
     ],
     nuevaCategoria: 'mineria'
   },
   {
     categoriaActual: 'orden_publico',
     patronesTitulo: [
-      ['creciente', 'río'], ['creciente', 'rio'],
-      ['desbordamiento'], ['desborde', 'río'],
-      ['emergencia', 'río'], ['alerta', 'creciente'],
+      ['creciente', 'rio'], ['desbordamiento'],
+      ['desborde', 'rio'], ['emergencia', 'rio'], ['alerta', 'creciente'],
     ],
     nuevaCategoria: 'clima'
   },
@@ -257,7 +182,6 @@ const REGLAS_RECLASIFICACION = [
     patronesTitulo: [
       ['documental', 'combate'], ['documental', 'reclutamiento'],
       ['history', 'reclutamiento'], ['history', 'combate'],
-      ['proyecto', 'reclutamiento', 'alcaldía'],
     ],
     nuevaCategoria: 'general'
   },
@@ -265,8 +189,7 @@ const REGLAS_RECLASIFICACION = [
     categoriaActual: 'orden_publico',
     patronesTitulo: [
       ['amenaza', 'candidato'], ['amenazas', 'candidato'],
-      ['amenaza', 'candidata'], ['amenazas', 'candidata'],
-      ['amenaza', 'político'], ['amenazas', 'político'],
+      ['amenaza', 'candidata'], ['amenaza', 'politico'],
       ['amenaza', 'congresista'], ['amenaza', 'senador'],
       ['amenaza', 'alcalde'], ['recompensa', 'candidato'],
     ],
@@ -276,78 +199,62 @@ const REGLAS_RECLASIFICACION = [
 
 // ================= SECCIÓN: FUNCIÓN PRINCIPAL =================
 function aplicarFiltro(titulo, categoria, link = '') {
+  // Normalizar TODO sin tildes para evitar problemas de encoding
   const tNorm = titulo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const lNorm = (link || '').toLowerCase();
 
-  // ── EXCEPCIÓN ABSOLUTA: hipopótamos siempre van a General ─────────────────
+  // EXCEPCIÓN ABSOLUTA
   if (tNorm.includes('hipopotamo')) return 'general';
 
-  // ── KILL-SWITCH GEOGRÁFICO: ciudad externa sin conexión con Antioquia ──────
-  // PRIORIDAD ABSOLUTA — aplica sin importar palabras críticas
-  // Si dice "Bogotá" o "Cali" sin mencionar Antioquia → siempre General
-  const mencionaCiudadExterna = CIUDADES_EXTERNAS.some(c =>
-    tNorm.includes(c.normalize('NFD').replace(/[̀-ͯ]/g, ''))
-  );
-  if (mencionaCiudadExterna) {
-    // Usa el índice completo de 125 municipios para verificar
-    if (!esTituloDeAntioquia(tNorm)) return 'general';
-  }
+  // KILL-SWITCH GEOGRÁFICO — prioridad absoluta, sin excepción
+  const mencionaCiudadExterna = CIUDADES_EXTERNAS.some(c => tNorm.includes(c));
+  if (mencionaCiudadExterna && !esTituloDeAntioquia(tNorm)) return 'general';
 
-  // ── PATRONES ADMINISTRATIVOS: recompensas y análisis → General ───────────
-  const tieneCriticaAdmin = PALABRAS_CRITICAS.some(p =>
-    tNorm.includes(p.normalize('NFD').replace(/[̀-ͯ]/g, ''))
-  );
-  if (!tieneCriticaAdmin) {
-    for (const patron of PATRONES_ADMINISTRATIVOS) {
-      const todasPresentes = patron.every(p =>
-        tNorm.includes(p.normalize('NFD').replace(/[̀-ͯ]/g, ''))
-      );
-      if (todasPresentes) return 'general';
-    }
-  }
-
-  // ── PASO 0: Filtro de URL administrativa — no es noticia ──────────────────
+  // URL administrativa
   if (link && URL_RUIDO.some(r => lNorm.includes(r))) return 'general';
 
-  // ── PASO 0A: Palabras retrospectivas → General ───────────────────────────
-  // Noticias de hechos pasados no son alertas activas — van a General
-  // Solo aplica si NO tiene palabras críticas de violencia real
-  const tieneCriticaRetro = PALABRAS_CRITICAS.some(p =>
-    tNorm.includes(p.normalize('NFD').replace(/[̀-ͯ]/g, ''))
+  const tieneCritica = PALABRAS_CRITICAS.some(p =>
+    tNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
   );
-  if (!tieneCriticaRetro) {
-    const esRetrospectiva = PALABRAS_RETROSPECTIVAS.some(p =>
-      tNorm.includes(p.normalize('NFD').replace(/[̀-ͯ]/g, ''))
-    );
-    if (esRetrospectiva) return 'general';
-  }
 
-  // ── PASO 0B: Regla de descarte de opinión y política ─────────────────────
-  // Solo aplica si NO tiene palabras críticas de violencia real
-  const tieneCritica = tieneCriticaRetro; // Reutilizar variable ya calculada
-
+  // Patrones administrativos
   if (!tieneCritica) {
-    for (const patron of PATRONES_OPINION) {
-      const todasPresentes = patron.every(p =>
+    for (const patron of PATRONES_ADMINISTRATIVOS) {
+      const ok = patron.every(p =>
         tNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
       );
-      if (todasPresentes) return 'general';
+      if (ok) return 'general';
     }
   }
 
-  // ── PASO 0C: Grupos armados prioritarios → orden_publico ──────────────────
-  // Si menciona un grupo armado conocido, sube automáticamente a orden_publico
-  // excepto si ya está en una categoría de mayor prioridad
-  const categoriasMayorPrioridad = ['homicidio', 'feminicidio', 'violencia_politica'];
-  if (!categoriasMayorPrioridad.includes(categoria)) {
-    const mencionaGrupo = GRUPOS_ARMADOS.some(g =>
-      tNorm.includes(g.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+  // Palabras retrospectivas
+  if (!tieneCritica) {
+    const esRetro = PALABRAS_RETROSPECTIVAS.some(p =>
+      tNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
     );
-    if (mencionaGrupo) return 'orden_publico';
+    if (esRetro) return 'general';
   }
 
-  // ── PASO 1: Verificar palabras críticas ───────────────────────────────────
-  // ── PASO 2: Palabras negras individuales → General ────────────────────────
+  // Patrones de opinión
+  if (!tieneCritica) {
+    for (const patron of PATRONES_OPINION) {
+      const ok = patron.every(p =>
+        tNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+      );
+      if (ok) return 'general';
+    }
+  }
+
+  // Grupos armados → orden_publico
+  const catsMayores = ['homicidio', 'feminicidio', 'violencia_politica'];
+  if (!catsMayores.includes(categoria)) {
+    const tieneGrupo = GRUPOS_ARMADOS.some(g =>
+      tNorm.includes(g.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+    );
+    if (tieneGrupo) return 'orden_publico';
+  }
+
+  // Palabras negras individuales
   if (!tieneCritica) {
     const tieneNegra = PALABRAS_NEGRAS_INDIVIDUALES.some(p =>
       tNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
@@ -355,29 +262,28 @@ function aplicarFiltro(titulo, categoria, link = '') {
     if (tieneNegra) return 'general';
   }
 
-  // ── PASO 3: Grupos de ruido — 2 o más palabras del mismo grupo → General ──
+  // Grupos de ruido
   if (!tieneCritica) {
     for (const grupo of GRUPOS_RUIDO) {
-      const coincidencias = grupo.filter(p =>
+      const hits = grupo.filter(p =>
         tNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
       );
-      if (coincidencias.length >= 2) return 'general';
+      if (hits.length >= 2) return 'general';
     }
   }
 
-  // ── PASO 4: Reglas de reclasificación ─────────────────────────────────────
+  // Reglas de reclasificación
   for (const regla of REGLAS_RECLASIFICACION) {
     if (regla.categoriaActual !== categoria) continue;
     for (const patron of regla.patronesTitulo) {
-      const todasPresentes = patron.every(p =>
+      const ok = patron.every(p =>
         tNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
       );
-      if (todasPresentes) return regla.nuevaCategoria;
+      if (ok) return regla.nuevaCategoria;
     }
   }
 
   return categoria;
 }
 
-// ================= SECCIÓN: EXPORTACIONES =================
 module.exports = { aplicarFiltro, GRUPOS_ARMADOS, URL_RUIDO };
