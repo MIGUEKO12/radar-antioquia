@@ -1,4 +1,4 @@
- // ================= SECCIÓN: DEPENDENCIAS =================
+// ================= SECCIÓN: DEPENDENCIAS =================
 const NoticiaModel = require('../../models/NoticiaModel');
 const { buscarLibre, recolectarAntioquia } = require('../../services/recolector');
 
@@ -277,15 +277,34 @@ function verificarAdminToken(req, res, next) {
 // ================= SECCIÓN: ADMIN — CAMBIAR CATEGORÍA =================
 async function adminCambiarCategoria(req, res) {
   try {
-    const { id, categoria } = req.body;
-    const categoriasValidas = ['orden_publico','homicidio','feminicidio','mineria','clima','violencia_politica','general'];
+    const { id, hash, categoria, municipio } = req.body;
+    const categoriasValidas = ['orden_publico','homicidio','feminicidio','mineria','violencia_politica','general'];
     if (!id || !categoriasValidas.includes(categoria)) {
       return res.status(400).json({ ok:false, error:'Parámetros inválidos' });
     }
     const { db } = require('../../config/database');
-    db.run('UPDATE noticias SET categoria = ? WHERE id = ?', [categoria, id]);
-    console.log(`[Admin] Noticia ${id} → ${categoria}`);
-    res.json({ ok:true, id, categoria });
+    const { MUNICIPIO_A_SUBREGION } = require('../../config/municipios');
+
+    // Detectar subregion del municipio seleccionado
+    const subregion = municipio ? (MUNICIPIO_A_SUBREGION[municipio.toLowerCase()] || 'general') : null;
+
+    // Actualizar en la tabla principal
+    if (municipio && subregion) {
+      db.run('UPDATE noticias SET categoria = ?, municipio = ?, subregion = ? WHERE id = ?', [categoria, municipio, subregion, id]);
+    } else {
+      db.run('UPDATE noticias SET categoria = ? WHERE id = ?', [categoria, id]);
+    }
+
+    // Guardar en tabla fijas para que el cron lo respete siempre
+    if (hash) {
+      db.run(
+        `INSERT OR REPLACE INTO noticias_fijas (hash, categoria, municipio, subregion) VALUES (?, ?, ?, ?)`,
+        [hash, categoria, municipio || null, subregion || null]
+      );
+    }
+
+    console.log(`[Admin] Noticia ${id} → ${categoria} ${municipio ? '/ '+municipio : ''} (bloqueado)`);
+    res.json({ ok:true, id, categoria, municipio, subregion });
   } catch(err) {
     res.status(500).json({ ok:false, error:err.message });
   }
@@ -294,11 +313,22 @@ async function adminCambiarCategoria(req, res) {
 // ================= SECCIÓN: ADMIN — ELIMINAR NOTICIA =================
 async function adminEliminarNoticia(req, res) {
   try {
-    const { id } = req.body;
+    const { id, hash, titulo } = req.body;
     if (!id) return res.status(400).json({ ok:false, error:'ID requerido' });
     const { db } = require('../../config/database');
+
+    // Eliminar de la tabla principal
     db.run('DELETE FROM noticias WHERE id = ?', [id]);
-    console.log(`[Admin] Noticia ${id} eliminada`);
+
+    // Bloquear el hash permanentemente para que el cron no la vuelva a insertar
+    if (hash) {
+      db.run(
+        `INSERT OR IGNORE INTO noticias_ignoradas (hash, titulo, motivo) VALUES (?, ?, 'admin')`,
+        [hash, titulo || '']
+      );
+    }
+
+    console.log(`[Admin] Noticia ${id} eliminada y hash bloqueado`);
     res.json({ ok:true, id });
   } catch(err) {
     res.status(500).json({ ok:false, error:err.message });

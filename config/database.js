@@ -27,7 +27,7 @@ async function initDB() {
     console.log('[DB] Nueva base de datos:', DB_PATH);
   }
 
-  // Crear tabla principal (sin score para compatibilidad con DB existentes)
+  // Tabla principal de noticias
   _db.run(`
     CREATE TABLE IF NOT EXISTS noticias (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,14 +48,36 @@ async function initDB() {
     CREATE INDEX IF NOT EXISTS idx_hash      ON noticias(hash);
   `);
 
-  // Migración segura: agregar columna score si no existe
+  // Migración: columna score
   try {
     _db.run(`ALTER TABLE noticias ADD COLUMN score INTEGER DEFAULT 1`);
     console.log('[DB] Migración: columna score agregada');
-  } catch(e) {
-    // Ya existe — comportamiento normal
-  }
+  } catch(e) {}
 
+  // Tabla de noticias ignoradas permanentemente
+  // El cron nunca volverá a insertar un hash que esté aquí
+  _db.run(`
+    CREATE TABLE IF NOT EXISTS noticias_ignoradas (
+      hash      TEXT PRIMARY KEY,
+      titulo    TEXT,
+      motivo    TEXT DEFAULT 'admin',
+      fecha     TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
+  // Tabla de noticias con categoría/municipio fijos por admin
+  // El cron respeta estos valores y no los sobreescribe
+  _db.run(`
+    CREATE TABLE IF NOT EXISTS noticias_fijas (
+      hash      TEXT PRIMARY KEY,
+      categoria TEXT,
+      municipio TEXT,
+      subregion TEXT,
+      fecha     TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
+  console.log('[DB] Tablas de control admin listas');
   guardarEnDisco();
   return _db;
 }

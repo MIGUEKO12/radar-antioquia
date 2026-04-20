@@ -5,18 +5,36 @@ const AdminState = {
   noticiaActual: null,
 };
 
+// Lista de municipios de Antioquia para el selector
+const MUNICIPIOS_LISTA = [
+  // Aburrá
+  'medellín','bello','itagüí','envigado','sabaneta','la estrella','caldas','copacabana','girardota','barbosa',
+  // Urabá
+  'turbo','apartadó','carepa','chigorodó','necoclí','san juan de urabá','arboletes','mutatá','vigía del fuerte','murindó','san pedro de urabá',
+  // Norte
+  'belmira','briceño','campamento','carolina del príncipe','don matías','entrerríos','gómez plata','guadalupe','ituango','san andrés de cuerquia','san josé de la montaña','san pedro de los milagros','santa rosa de osos','toledo','valdivia','yarumal','angostura',
+  // Nordeste
+  'amalfi','anorí','cisneros','remedios','san roque','santo domingo','segovia','vegachí','yalí','yolombó',
+  // Occidente
+  'abriaquí','anzá','armenia antioquia','buriticá','caicedo','cañasgordas','dabeiba','ebéjico','frontino','giraldo','heliconia','liborina','olaya','peque','sabanalarga','san jerónimo','santa fe de antioquia','sopetrán','uramita',
+  // Oriente
+  'el carmen de viboral','rionegro','marinilla','guarne','la ceja','el retiro','la unión','san vicente ferrer','el santuario','cocorná','granada','san carlos','san luis','san rafael','argelia','nariño','abejorral','sonsón','alejandría','concepción','el peñol','guatapé','san francisco',
+  // Suroeste
+  'amagá','andes','angelópolis','betania','betulia','caramanta','ciudad bolívar','concordia','fredonia','hispania','jardín','jericó','la pintada','montebello','pueblorrico','salgar','santa bárbara','támesis','tarso','titiribí','urrao','valparaíso','venecia',
+  // Magdalena Medio
+  'caracolí','maceo','puerto berrío','puerto nare','puerto triunfo','yondó',
+  // Bajo Cauca
+  'caucasia','el bagre','nechí','tarazá','zaragoza','cáceres',
+];
+
 // ================= SECCIÓN: ATAJO DE TECLADO =================
-// Ctrl + Shift + A abre el login admin
 let _keysPressed = {};
 document.addEventListener('keydown', e => {
   _keysPressed[e.key] = true;
   if (_keysPressed['Control'] && _keysPressed['Shift'] && _keysPressed['Z']) {
     e.preventDefault();
-    if (AdminState.activo) {
-      salirAdmin();
-    } else {
-      abrirLoginAdmin();
-    }
+    if (AdminState.activo) salirAdmin();
+    else abrirLoginAdmin();
   }
 });
 document.addEventListener('keyup', e => { delete _keysPressed[e.key]; });
@@ -39,7 +57,6 @@ function cerrarLoginAdmin() {
 async function verificarAdminPassword() {
   const password = document.getElementById('admin-password-input').value;
   if (!password) return;
-
   try {
     const res  = await fetch('/api/admin/login', {
       method: 'POST',
@@ -47,7 +64,6 @@ async function verificarAdminPassword() {
       body: JSON.stringify({ password })
     });
     const data = await res.json();
-
     if (data.ok) {
       AdminState.activo = true;
       AdminState.token  = data.token;
@@ -58,20 +74,15 @@ async function verificarAdminPassword() {
       document.getElementById('admin-password-input').value = '';
       document.getElementById('admin-password-input').focus();
     }
-  } catch(e) {
-    console.error('[Admin] Error login:', e);
-  }
+  } catch(e) { console.error('[Admin] Error login:', e); }
 }
 
 // ================= SECCIÓN: MODO ADMIN =================
 function activarModoAdmin() {
   AdminState.activo = true;
-  // Mostrar banner
   const banner = document.getElementById('banner-admin');
   if (banner) banner.style.display = 'flex';
-  // Re-renderizar noticias con botones de edición
   if (typeof renderNoticiasPanel === 'function') renderNoticiasPanel();
-  console.log('[Admin] Modo admin activado');
 }
 
 function salirAdmin() {
@@ -80,7 +91,6 @@ function salirAdmin() {
   const banner = document.getElementById('banner-admin');
   if (banner) banner.style.display = 'none';
   if (typeof renderNoticiasPanel === 'function') renderNoticiasPanel();
-  console.log('[Admin] Modo admin desactivado');
 }
 
 // ================= SECCIÓN: EDITAR NOTICIA =================
@@ -88,14 +98,15 @@ function abrirAdminEditar(noticia) {
   if (!AdminState.activo) return;
   AdminState.noticiaActual = noticia;
 
-  const modal = document.getElementById('modal-admin-editar');
-  const titulo = document.getElementById('admin-editar-titulo');
-  const select = document.getElementById('admin-editar-categoria');
+  document.getElementById('admin-editar-titulo').textContent = noticia.titulo;
+  document.getElementById('admin-editar-categoria').value = noticia.categoria || 'general';
 
-  titulo.textContent = noticia.titulo;
-  select.value = noticia.categoria || 'general';
+  // Poblar selector de municipios
+  const selMuni = document.getElementById('admin-editar-municipio');
+  selMuni.innerHTML = '<option value="">— Sin municipio —</option>' +
+    MUNICIPIOS_LISTA.map(m => `<option value="${m}" ${noticia.municipio === m ? 'selected' : ''}>${m.charAt(0).toUpperCase()+m.slice(1)}</option>`).join('');
 
-  modal.style.display = 'flex';
+  document.getElementById('modal-admin-editar').style.display = 'flex';
   document.body.style.overflow = 'hidden';
 }
 
@@ -108,87 +119,65 @@ function cerrarAdminEditar() {
 async function guardarCambioCategoria() {
   const noticia   = AdminState.noticiaActual;
   const categoria = document.getElementById('admin-editar-categoria').value;
+  const municipio = document.getElementById('admin-editar-municipio').value;
   if (!noticia || !categoria) return;
 
   try {
     const res  = await fetch('/api/admin/noticia/categoria', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-admin-token': AdminState.token
-      },
-      body: JSON.stringify({ id: noticia.id, categoria })
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': AdminState.token },
+      body: JSON.stringify({ id: noticia.id, hash: noticia.hash, categoria, municipio })
     });
     const data = await res.json();
-
     if (data.ok) {
       cerrarAdminEditar();
-      // Actualizar localmente sin recargar
       noticia.categoria = categoria;
+      if (municipio) noticia.municipio = municipio;
       if (typeof renderNoticiasPanel === 'function') renderNoticiasPanel();
-      mostrarToastAdmin(`✓ Categoría cambiada a "${categoria}"`);
-    } else {
-      alert('Error: ' + data.error);
-    }
-  } catch(e) {
-    console.error('[Admin] Error guardar:', e);
-  }
+      mostrarToastAdmin(`✓ Guardado y bloqueado para el cron`);
+    } else { alert('Error: ' + data.error); }
+  } catch(e) { console.error('[Admin] Error guardar:', e); }
 }
 
 async function eliminarNoticia() {
   const noticia = AdminState.noticiaActual;
   if (!noticia) return;
-  if (!confirm(`¿Eliminar esta noticia?\n\n"${noticia.titulo.substring(0,80)}..."`)) return;
+  if (!confirm(`¿Eliminar y bloquear esta noticia?\n\nNo volverá a aparecer nunca.\n\n"${noticia.titulo.substring(0,80)}..."`)) return;
 
   try {
     const res  = await fetch('/api/admin/noticia/eliminar', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-admin-token': AdminState.token
-      },
-      body: JSON.stringify({ id: noticia.id })
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': AdminState.token },
+      body: JSON.stringify({ id: noticia.id, hash: noticia.hash, titulo: noticia.titulo })
     });
     const data = await res.json();
-
     if (data.ok) {
       cerrarAdminEditar();
-      // Eliminar de la lista local
       if (typeof Estado !== 'undefined') {
         Estado.todasNoticiasPanel = Estado.todasNoticiasPanel.filter(n => n.id !== noticia.id);
         renderNoticiasPanel();
       }
-      mostrarToastAdmin('🗑 Noticia eliminada');
-    } else {
-      alert('Error: ' + data.error);
-    }
-  } catch(e) {
-    console.error('[Admin] Error eliminar:', e);
-  }
+      mostrarToastAdmin('🗑 Eliminada y bloqueada permanentemente');
+    } else { alert('Error: ' + data.error); }
+  } catch(e) { console.error('[Admin] Error eliminar:', e); }
 }
 
-// ================= SECCIÓN: TOAST DE CONFIRMACIÓN =================
+// ================= SECCIÓN: TOAST =================
 function mostrarToastAdmin(mensaje) {
   const toast = document.createElement('div');
   toast.textContent = mensaje;
-  toast.style.cssText = `
-    position:fixed;bottom:70px;right:16px;z-index:99999;
-    background:#1b5e20;color:white;padding:10px 18px;
-    border-radius:12px;font-size:13px;font-weight:600;
-    box-shadow:0 4px 12px rgba(0,0,0,0.3);
-    animation:fadeInUp 0.3s ease;
-  `;
+  toast.style.cssText = `position:fixed;bottom:70px;right:16px;z-index:99999;background:#1b5e20;color:white;padding:10px 18px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.3);`;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
 }
 
 // ================= SECCIÓN: EXPOSICIÓN GLOBAL =================
-window.abrirLoginAdmin      = abrirLoginAdmin;
-window.cerrarLoginAdmin     = cerrarLoginAdmin;
+window.abrirLoginAdmin        = abrirLoginAdmin;
+window.cerrarLoginAdmin       = cerrarLoginAdmin;
 window.verificarAdminPassword = verificarAdminPassword;
-window.salirAdmin           = salirAdmin;
-window.abrirAdminEditar     = abrirAdminEditar;
-window.cerrarAdminEditar    = cerrarAdminEditar;
+window.salirAdmin             = salirAdmin;
+window.abrirAdminEditar       = abrirAdminEditar;
+window.cerrarAdminEditar      = cerrarAdminEditar;
 window.guardarCambioCategoria = guardarCambioCategoria;
-window.eliminarNoticia      = eliminarNoticia;
-window.AdminState           = AdminState;
+window.eliminarNoticia        = eliminarNoticia;
+window.AdminState             = AdminState;

@@ -1,4 +1,4 @@
- // ================= SECCIÓN: DEPENDENCIAS =================
+// ================= SECCIÓN: DEPENDENCIAS =================
 const { db }  = require('../config/database'); // Instancia sql.js
 const crypto  = require('crypto');             // Para hash de deduplicación
 const { obtenerPuntuacionFuente } = require('../config/fuentes'); // Scoring de fuentes
@@ -9,13 +9,38 @@ function generarHash(titulo) {
 }
 
 // ================= SECCIÓN: INSERCIÓN =================
-function insertarNoticia({ titulo, link, fecha, subregion, municipio, categoria, modo, query }) {
+function insertarNoticia({ titulo, link, fecha, subregion: _subregion, municipio: _municipio, categoria: _categoria, modo, query }) {
+  let subregion = _subregion;
+  let municipio = _municipio;
+  let categoria = _categoria;
   const hash  = generarHash(titulo);
   const score = obtenerPuntuacionFuente(titulo); // 3=Alta, 2=Media, 1=Baja/Desconocido
 
-  // Verificamos si el hash ya existe (deduplicación manual — sql.js no tiene INSERT OR IGNORE directo)
+  // Verificar si está en lista negra de ignoradas — nunca se vuelve a insertar
+  const ignorada = db.get('SELECT hash FROM noticias_ignoradas WHERE hash = ?', [hash]);
+  if (ignorada) return false;
+
+  // Verificamos si el hash ya existe (deduplicación manual)
   const existe = db.get('SELECT id FROM noticias WHERE hash = ?', [hash]);
-  if (existe) return false; // Ya existe, no insertamos
+  if (existe) {
+    // Verificar si tiene categoría/municipio fijo por admin — respetar siempre
+    const fija = db.get('SELECT * FROM noticias_fijas WHERE hash = ?', [hash]);
+    if (fija) {
+      db.run(
+        `UPDATE noticias SET categoria = ?, municipio = ?, subregion = ? WHERE hash = ?`,
+        [fija.categoria, fija.municipio, fija.subregion || 'general', hash]
+      );
+    }
+    return false;
+  }
+
+  // Verificar si tiene valores fijos antes de insertar
+  const fijaNueva = db.get('SELECT * FROM noticias_fijas WHERE hash = ?', [hash]);
+  if (fijaNueva) {
+    categoria = fijaNueva.categoria || categoria;
+    municipio = fijaNueva.municipio || municipio;
+    subregion = fijaNueva.subregion || subregion;
+  }
 
   const result = db.run(
     `INSERT INTO noticias (titulo, link, fecha, subregion, municipio, categoria, modo, query, hash, score)

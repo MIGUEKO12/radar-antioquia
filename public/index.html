@@ -466,15 +466,19 @@
     <div style="padding:20px 24px;">
       <p id="admin-editar-titulo" style="font-size:13px;color:#374151;line-height:1.5;margin-bottom:16px;padding:10px;background:#f8f9fa;border-radius:8px;border-left:3px solid #1b5e20;"></p>
       <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Cambiar categoría a:</label>
-      <select id="admin-editar-categoria" style="width:100%;padding:10px;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:16px;">
+      <select id="admin-editar-categoria" style="width:100%;padding:10px;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:12px;">
         <option value="orden_publico">Orden público</option>
         <option value="homicidio">Homicidio</option>
         <option value="feminicidio">Feminicidio</option>
         <option value="mineria">Minería</option>
-        <option value="clima">Clima</option>
         <option value="violencia_politica">Violencia política</option>
         <option value="general">General</option>
       </select>
+      <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Asignar municipio (opcional):</label>
+      <select id="admin-editar-municipio" style="width:100%;padding:10px;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:16px;">
+        <option value="">— Sin municipio —</option>
+      </select>
+      <p style="font-size:11px;color:#9ca3af;margin:-10px 0 12px;">⚠️ Los cambios quedan bloqueados — el cron no los sobreescribirá</p>
       <div style="display:flex;gap:8px;">
         <button onclick="cerrarAdminEditar()" style="flex:1;padding:10px;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Cancelar</button>
         <button onclick="guardarCambioCategoria()" style="flex:1;padding:10px;background:#1565c0;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Guardar cambio</button>
