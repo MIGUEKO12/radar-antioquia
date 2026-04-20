@@ -2,33 +2,7 @@
 const NoticiaModel = require('../../models/NoticiaModel');
 const { buscarLibre, recolectarAntioquia } = require('../../services/recolector');
 
-// ================= SECCIÓN: CACHE EN MEMORIA =================
-// Guarda el resultado del dashboard por periodo para evitar consultas repetidas a la DB
-// Se invalida automáticamente después de 5 minutos o cuando llegan noticias nuevas
-const _cache = {};
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
-function obtenerCache(clave) {
-  const entrada = _cache[clave];
-  if (!entrada) return null;
-  if (Date.now() - entrada.timestamp > CACHE_TTL_MS) {
-    delete _cache[clave]; // Expiró — eliminar
-    return null;
-  }
-  return entrada.datos;
-}
-
-function guardarCache(clave, datos) {
-  _cache[clave] = { datos, timestamp: Date.now() };
-}
-
-// Invalida todo el cache — se llama desde app.js después de cada recolección
-function invalidarCache() {
-  Object.keys(_cache).forEach(k => delete _cache[k]);
-  console.log('[CACHE] Invalidado por nueva recolección');
-}
-
-module.exports.invalidarCache = invalidarCache;
 
 // ================= SECCIÓN: HELPER PERÍODO =================
 function resolverPeriodo(query) {
@@ -71,17 +45,6 @@ async function getDashboard(req, res) {
     const { desde, hasta } = resolverPeriodo(req.query);
     const periodo = req.query.periodo || 'hoy';
 
-    // Clave única por combinación de fechas y periodo
-    const clave = `dashboard_${periodo}_${desde}_${hasta}`;
-
-    // Intentar servir desde cache
-    const cacheado = obtenerCache(clave);
-    if (cacheado) {
-      console.log(`[CACHE] Hit: ${clave}`);
-      return res.json(cacheado);
-    }
-
-    // No está en cache — consultar DB
     const [porCategoria, porSubregion, tendencia, recientes] = await Promise.all([
       NoticiaModel.contarPorCategoria({ desde, hasta, modo:'antioquia' }),
       NoticiaModel.contarPorSubregion({ desde, hasta }),
@@ -91,19 +54,13 @@ async function getDashboard(req, res) {
 
     const total = porCategoria.reduce((acc,c) => acc+c.total, 0);
 
-    const respuesta = {
+    res.json({
       ok:true, periodo, desde, hasta,
       resumen:{ total, porCategoria },
       mapa: porSubregion,
       tendencia,
       recientes
-    };
-
-    // Guardar en cache para próximas consultas
-    guardarCache(clave, respuesta);
-    console.log(`[CACHE] Guardado: ${clave}`);
-
-    res.json(respuesta);
+    });
   } catch (err) {
     console.error('[Dashboard]', err);
     res.status(500).json({ ok:false, error:'Error al cargar el dashboard' });
