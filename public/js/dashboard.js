@@ -5,7 +5,7 @@ const Estado = {
   subregionActual:null, datosSubregion:null,
   noticiasFiltradasMapa:null, terminoBusqueda:null,
   todasNoticiasPanel:[], noticiasPanel:[],
-  paginaPanel:0, filtroCatPanel:'todas',
+  paginaPanel:0, filtroCatPanel:'orden_publico',
 };
 
 const ITEMS_PANEL      = 16;
@@ -77,8 +77,11 @@ async function cargarDashboard() {
     actualizarClasificacion(data.resumen.porCategoria, data.resumen.total);
     Estado.todasNoticiasPanel = data.recientes;
     Estado.paginaPanel        = 0;
-    Estado.filtroCatPanel     = 'todas';
-    resetFiltrosBotones();
+    Estado.filtroCatPanel     = 'orden_publico';
+    // Activar botón de orden público al cargar
+    document.querySelectorAll('.filtro-cat-btn').forEach(b => b.classList.remove('activo'));
+    const btnOP = document.querySelector('.filtro-cat-btn[onclick*="orden_publico"]');
+    if (btnOP) btnOP.classList.add('activo');
     renderNoticiasPanel();
     $('ultima-actualizacion').textContent =
       'Actualizado: ' + new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
