@@ -58,6 +58,34 @@ const PATRONES_OPINION = [
   ['fiscal pide'], ['presidente pide'],
 ];
 
+// ================= SECCIÓN: PALABRAS RETROSPECTIVAS =================
+// Noticias que hablan de hechos del PASADO disfrazados de actuales
+// Aunque tengan palabras de orden público, van a General
+// porque el Gobernador no debe confundirlas con alertas de hoy
+const PALABRAS_RETROSPECTIVAS = [
+  // Reconstrucción de hechos pasados
+  'así fue', 'asi fue', 'así fue como', 'asi fue como',
+  'así ocurrió', 'asi ocurrio', 'así sucedió', 'asi sucedio',
+  'reconstrucción', 'reconstruccion', 'reconstruyen',
+  // Videos e imágenes reveladas después
+  'revelan video', 'revelan videos', 'video inédito', 'video inedito',
+  'imágenes inéditas', 'imagenes ineditas', 'fotos inéditas',
+  'video desconocido', 'videos desconocidos', 'material inédito',
+  'nuevas imágenes', 'nuevas imagenes',
+  // Aniversarios y memorias
+  'hace un año', 'hace dos años', 'hace tres años',
+  'un año después', 'dos años después', 'tres años después',
+  'un año despues', 'dos años despues', 'tres años despues',
+  'aniversario', 'conmemoración', 'conmemoracion',
+  'en memoria', 'a un año', 'a dos años',
+  // Informes especiales y reportajes históricos
+  'historia de', 'el caso de', 'crónica de', 'cronica de',
+  'especial investigativo', 'informe especial',
+  'lo que no se supo', 'lo que no sabia', 'lo que no sabía',
+  'la verdad detrás', 'la verdad detras', 'detrás del crimen',
+  'detras del crimen', 'la historia detrás',
+];
+
 // ================= SECCIÓN: PALABRAS CRÍTICAS (no se pueden bajar a General) =================
 const PALABRAS_CRITICAS = [
   // Homicidio
@@ -173,11 +201,22 @@ function aplicarFiltro(titulo, categoria, link = '') {
   // ── PASO 0: Filtro de URL administrativa — no es noticia ──────────────────
   if (link && URL_RUIDO.some(r => lNorm.includes(r))) return 'general';
 
+  // ── PASO 0A: Palabras retrospectivas → General ───────────────────────────
+  // Noticias de hechos pasados no son alertas activas — van a General
+  // Solo aplica si NO tiene palabras críticas de violencia real
+  const tieneCriticaRetro = PALABRAS_CRITICAS.some(p =>
+    tNorm.includes(p.normalize('NFD').replace(/[̀-ͯ]/g, ''))
+  );
+  if (!tieneCriticaRetro) {
+    const esRetrospectiva = PALABRAS_RETROSPECTIVAS.some(p =>
+      tNorm.includes(p.normalize('NFD').replace(/[̀-ͯ]/g, ''))
+    );
+    if (esRetrospectiva) return 'general';
+  }
+
   // ── PASO 0B: Regla de descarte de opinión y política ─────────────────────
   // Solo aplica si NO tiene palabras críticas de violencia real
-  const tieneCritica = PALABRAS_CRITICAS.some(p =>
-    tNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
-  );
+  const tieneCritica = tieneCriticaRetro; // Reutilizar variable ya calculada
 
   if (!tieneCritica) {
     for (const patron of PATRONES_OPINION) {
