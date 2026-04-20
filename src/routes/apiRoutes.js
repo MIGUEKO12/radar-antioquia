@@ -14,5 +14,6 @@ router.post('/admin/reclasificar',    controller.reclasificarDB);
 router.post('/admin/login',           controller.adminLogin);
 router.post('/admin/noticia/categoria', controller.verificarAdminToken, controller.adminCambiarCategoria);
 router.post('/admin/noticia/eliminar',  controller.verificarAdminToken, controller.adminEliminarNoticia);
+router.get('/admin/cambios',           controller.adminVerCambios);
 
 module.exports = router;

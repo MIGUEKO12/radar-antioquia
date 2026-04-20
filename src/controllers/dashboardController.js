@@ -335,6 +335,35 @@ async function adminEliminarNoticia(req, res) {
   }
 }
 
+// ================= SECCIÓN: ADMIN — VER CAMBIOS =================
+async function adminVerCambios(req, res) {
+  try {
+    const { db } = require('../../config/database');
+
+    const ignoradas = db.all(
+      `SELECT hash, titulo, motivo, fecha FROM noticias_ignoradas ORDER BY fecha DESC`,
+      []
+    );
+
+    const fijas = db.all(
+      `SELECT f.hash, f.categoria, f.municipio, f.subregion, f.fecha,
+              n.titulo
+       FROM noticias_fijas f
+       LEFT JOIN noticias n ON n.hash = f.hash
+       ORDER BY f.fecha DESC`,
+      []
+    );
+
+    res.json({
+      ok: true,
+      ignoradas: { total: ignoradas.length, items: ignoradas },
+      fijas:     { total: fijas.length,     items: fijas     }
+    });
+  } catch(err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
 // ================= SECCIÓN: EXPORTACIONES =================
 module.exports = {
   getDashboard,
@@ -349,5 +378,6 @@ module.exports = {
   adminLogin,
   verificarAdminToken,
   adminCambiarCategoria,
-  adminEliminarNoticia
+  adminEliminarNoticia,
+  adminVerCambios
 };
