@@ -31,9 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
   iniciarTooltipOP();
   cargarDashboard();
   cargarTendenciaIndep();
-  setInterval(() => {
-    if (Estado.modo === 'antioquia' && !Estado.subregionActual) cargarDashboard();
-  }, 5 * 60 * 1000);
+  // Verificar noticias nuevas cada 5 minutos SIN recargar la página
+  setInterval(verificarNoticiasNuevas, 5 * 60 * 1000);
   const qLibre = $('q-libre');
   if (qLibre) qLibre.addEventListener('keypress', e => { if(e.key==='Enter') ejecutarBusquedaLibre(); });
 });
@@ -85,11 +84,69 @@ async function cargarDashboard() {
     renderNoticiasPanel();
     $('ultima-actualizacion').textContent =
       'Actualizado: ' + new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+    _ultimoTotal = data.resumen.total; // Guardar total para comparar luego
   } catch (err) {
     console.error('[Dashboard]', err);
   } finally {
     mostrarSpinner(false);
   }
+}
+
+// ================= SECCIÓN: VERIFICACIÓN SILENCIOSA =================
+// Verifica si hay noticias nuevas sin recargar la página
+let _ultimoTotal = 0;
+
+async function verificarNoticiasNuevas() {
+  if (Estado.modo !== 'antioquia' || Estado.subregionActual) return;
+  try {
+    const params = new URLSearchParams({ periodo: Estado.periodo });
+    const desde = $('fecha-desde').value;
+    const hasta = $('fecha-hasta').value;
+    if (desde) params.append('desde', desde);
+    if (hasta) params.append('hasta', hasta);
+    const res  = await fetch(`/api/dashboard?${params}`);
+    const data = await res.json();
+    if (!data.ok) return;
+    const nuevoTotal = data.resumen.total;
+    if (_ultimoTotal === 0) { _ultimoTotal = nuevoTotal; return; }
+    const nuevas = nuevoTotal - _ultimoTotal;
+    if (nuevas > 0) {
+      mostrarBannerNuevas(nuevas, data);
+    }
+  } catch(e) { console.error('[Verificar]', e); }
+}
+
+function mostrarBannerNuevas(cantidad, data) {
+  // Remover banner anterior si existe
+  const anterior = document.getElementById('banner-nuevas');
+  if (anterior) anterior.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'banner-nuevas';
+  banner.style.cssText = `
+    position:fixed;top:70px;left:50%;transform:translateX(-50%);
+    z-index:9998;background:#1b5e20;color:white;
+    padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;
+    box-shadow:0 4px 16px rgba(0,0,0,0.3);
+    display:flex;align-items:center;gap:10px;cursor:pointer;
+    animation:slideDown 0.3s ease;
+  `;
+  banner.innerHTML = `
+    🔔 ${cantidad} noticia${cantidad>1?'s':''} nueva${cantidad>1?'s':''} disponible${cantidad>1?'s':''}
+    <button style="background:rgba(255,255,255,0.25);border:none;color:white;padding:4px 12px;border-radius:10px;font-size:12px;cursor:pointer;font-weight:600;">
+      Actualizar
+    </button>
+    <button onclick="document.getElementById('banner-nuevas').remove()" style="background:none;border:none;color:rgba(255,255,255,0.7);font-size:16px;cursor:pointer;padding:0 4px;">✕</button>
+  `;
+  banner.querySelector('button').addEventListener('click', () => {
+    banner.remove();
+    _ultimoTotal = 0;
+    cargarDashboard();
+  });
+  document.body.appendChild(banner);
+
+  // Auto-ocultar después de 30 segundos
+  setTimeout(() => { if (banner.parentNode) banner.remove(); }, 30000);
 }
 
 // ================= SECCIÓN: MAPA =================
