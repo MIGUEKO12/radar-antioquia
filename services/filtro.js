@@ -1,4 +1,6 @@
  // ================= SECCIÓN: FILTRO DE CALIDAD DE NOTICIAS =================
+// Importar índice de municipios para el kill-switch geográfico
+const { MUNICIPIO_A_SUBREGION } = require('../config/municipios');
 // Este archivo actúa como capa de corrección DESPUÉS del clasificador.
 // No borra noticias — las reclasifica a General si detecta ruido o contexto incorrecto.
 // Se aplica antes de guardar en la DB.
@@ -7,38 +9,48 @@
 // Si el título menciona estas ciudades SIN mencionar un municipio de Antioquia → descarte
 // El medio puede ser antioqueño pero la noticia no es del territorio
 const CIUDADES_EXTERNAS = [
+  // Ciudades específicas que no generan ambigüedad con municipios de Antioquia
   'bogota', 'bogotá', 'cundinamarca',
   'cali', 'valle del cauca',
-  'barranquilla', 'atlantico', 'atlántico',
-  'cartagena', 'bolivar', 'bolívar',
-  'bucaramanga', 'santander',
+  'barranquilla',
+  'cartagena de indias',
+  'bucaramanga',
   'cucuta', 'cúcuta', 'norte de santander',
   'pereira', 'risaralda',
-  'manizales', 'caldas',
+  'manizales',
   'ibague', 'ibagué', 'tolima',
   'villavicencio', 'meta',
   'pasto', 'narino', 'nariño',
   'neiva', 'huila',
-  'santa marta', 'magdalena',
-  'monteria', 'montería', 'cordoba', 'córdoba',
-  'armenia', 'quindio', 'quindío',
+  'santa marta',
   'popayan', 'popayán', 'cauca',
+  'monteria', 'montería',
+  // NO incluir: magdalena, córdoba, bolívar, caldas, armenia, quindío
+  // porque son también municipios o subregiones de Antioquia
 ];
 
-// Municipios de Antioquia — si aparece uno, la noticia SÍ es de Antioquia
-// aunque también mencione otra ciudad
-const MUNICIPIOS_ANTIOQUIA_CHECK = [
-  'antioquia', 'medellin', 'medellín', 'uraba', 'urabá',
-  'bajo cauca', 'nordeste', 'suroeste', 'occidente antioque',
-  'valle de aburrá', 'aburra', 'magdalena medio antioque',
-  'turbo', 'apartado', 'apartadó', 'caucasia', 'ituango',
-  'bello', 'itagui', 'itagüí', 'envigado', 'sabaneta',
-  'rionegro', 'marinilla', 'carmen de viboral',
-  'segovia', 'remedios', 'el bagre', 'taraza', 'tarazá',
-  'yarumal', 'valdivia', 'dabeiba', 'frontino',
-  'san carlos', 'granada antioque', 'cocorna', 'cocorná',
-  'briceño', 'briceno', 'yondo', 'yondó',
+// Términos adicionales de Antioquia que no están en el índice de municipios
+const TERMINOS_ANTIOQUIA_EXTRA = [
+  'antioquia', 'uraba', 'urabá', 'bajo cauca', 'nordeste antioque',
+  'suroeste antioque', 'occidente antioque', 'valle de aburrá',
+  'magdalena medio antioque', 'gobernacion de antioquia',
+  'gobernación de antioquia',
 ];
+
+// Función que verifica si el texto menciona algún municipio de Antioquia
+// Usa el índice completo de 125 municipios del config/municipios.js
+function esTituloDeAntioquia(tNorm) {
+  // Verificar municipios del índice completo
+  for (const municipio of Object.keys(MUNICIPIO_A_SUBREGION)) {
+    const munNorm = municipio.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const regex = new RegExp(`\b${munNorm}\b`, 'i');
+    if (regex.test(tNorm)) return true;
+  }
+  // Verificar términos extra de Antioquia
+  return TERMINOS_ANTIOQUIA_EXTRA.some(t =>
+    tNorm.includes(t.normalize('NFD').replace(/[̀-ͯ]/g, ''))
+  );
+}
 
 // ================= SECCIÓN: PATRONES DE RECOMPENSA Y ANÁLISIS =================
 // Recompensas son decisiones administrativas, no hechos de orden público
@@ -277,10 +289,8 @@ function aplicarFiltro(titulo, categoria, link = '') {
     tNorm.includes(c.normalize('NFD').replace(/[̀-ͯ]/g, ''))
   );
   if (mencionaCiudadExterna) {
-    const mencionaAntioquia = MUNICIPIOS_ANTIOQUIA_CHECK.some(m =>
-      tNorm.includes(m.normalize('NFD').replace(/[̀-ͯ]/g, ''))
-    );
-    if (!mencionaAntioquia) return 'general';
+    // Usa el índice completo de 125 municipios para verificar
+    if (!esTituloDeAntioquia(tNorm)) return 'general';
   }
 
   // ── PATRONES ADMINISTRATIVOS: recompensas y análisis → General ───────────
