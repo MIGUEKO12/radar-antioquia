@@ -10,5 +10,6 @@ router.get('/noticias/buscar',        controller.buscarNoticias);
 router.get('/noticias/tendencia',     controller.getTendenciaCategoria);
 router.get('/salud/logs',             controller.getLogs);
 router.post('/noticias/recolectar',   controller.recolectarManual);
+router.post('/admin/reclasificar',    controller.reclasificarDB);
 
 module.exports = router;
