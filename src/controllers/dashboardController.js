@@ -246,6 +246,65 @@ async function reclasificarDB(req, res) {
   }
 }
 
+// ================= SECCIÓN: ADMIN — LOGIN =================
+async function adminLogin(req, res) {
+  try {
+    const { password } = req.body;
+    const adminPass = process.env.ADMIN_PASSWORD;
+    if (!adminPass) return res.status(500).json({ ok:false, error:'Admin no configurado' });
+    if (password !== adminPass) return res.status(401).json({ ok:false, error:'Contraseña incorrecta' });
+    // Token simple basado en la contraseña — no necesitamos JWT para esto
+    const token = Buffer.from(adminPass + Date.now()).toString('base64');
+    // Guardar token en memoria con expiración de 4 horas
+    global._adminTokens = global._adminTokens || {};
+    global._adminTokens[token] = Date.now() + (4 * 60 * 60 * 1000);
+    res.json({ ok:true, token });
+  } catch(err) {
+    res.status(500).json({ ok:false, error:err.message });
+  }
+}
+
+// ================= SECCIÓN: ADMIN — MIDDLEWARE VERIFICACIÓN =================
+function verificarAdminToken(req, res, next) {
+  const token = req.headers['x-admin-token'];
+  if (!token) return res.status(401).json({ ok:false, error:'Token requerido' });
+  global._adminTokens = global._adminTokens || {};
+  const expira = global._adminTokens[token];
+  if (!expira || Date.now() > expira) return res.status(401).json({ ok:false, error:'Token expirado' });
+  next();
+}
+
+// ================= SECCIÓN: ADMIN — CAMBIAR CATEGORÍA =================
+async function adminCambiarCategoria(req, res) {
+  try {
+    const { id, categoria } = req.body;
+    const categoriasValidas = ['orden_publico','homicidio','feminicidio','mineria','clima','violencia_politica','general'];
+    if (!id || !categoriasValidas.includes(categoria)) {
+      return res.status(400).json({ ok:false, error:'Parámetros inválidos' });
+    }
+    const { db } = require('../../config/database');
+    db.run('UPDATE noticias SET categoria = ? WHERE id = ?', [categoria, id]);
+    console.log(`[Admin] Noticia ${id} → ${categoria}`);
+    res.json({ ok:true, id, categoria });
+  } catch(err) {
+    res.status(500).json({ ok:false, error:err.message });
+  }
+}
+
+// ================= SECCIÓN: ADMIN — ELIMINAR NOTICIA =================
+async function adminEliminarNoticia(req, res) {
+  try {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ ok:false, error:'ID requerido' });
+    const { db } = require('../../config/database');
+    db.run('DELETE FROM noticias WHERE id = ?', [id]);
+    console.log(`[Admin] Noticia ${id} eliminada`);
+    res.json({ ok:true, id });
+  } catch(err) {
+    res.status(500).json({ ok:false, error:err.message });
+  }
+}
+
 // ================= SECCIÓN: EXPORTACIONES =================
 module.exports = {
   getDashboard,
@@ -256,5 +315,9 @@ module.exports = {
   buscarNoticias,
   recolectarManual,
   getLogs,
-  reclasificarDB
+  reclasificarDB,
+  adminLogin,
+  verificarAdminToken,
+  adminCambiarCategoria,
+  adminEliminarNoticia
 };
