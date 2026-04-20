@@ -3,6 +3,66 @@
 // No borra noticias — las reclasifica a General si detecta ruido o contexto incorrecto.
 // Se aplica antes de guardar en la DB.
 
+// ================= SECCIÓN: CIUDADES FUERA DE ANTIOQUIA (Kill-switch) =================
+// Si el título menciona estas ciudades SIN mencionar un municipio de Antioquia → descarte
+// El medio puede ser antioqueño pero la noticia no es del territorio
+const CIUDADES_EXTERNAS = [
+  'bogota', 'bogotá', 'cundinamarca',
+  'cali', 'valle del cauca',
+  'barranquilla', 'atlantico', 'atlántico',
+  'cartagena', 'bolivar', 'bolívar',
+  'bucaramanga', 'santander',
+  'cucuta', 'cúcuta', 'norte de santander',
+  'pereira', 'risaralda',
+  'manizales', 'caldas',
+  'ibague', 'ibagué', 'tolima',
+  'villavicencio', 'meta',
+  'pasto', 'narino', 'nariño',
+  'neiva', 'huila',
+  'santa marta', 'magdalena',
+  'monteria', 'montería', 'cordoba', 'córdoba',
+  'armenia', 'quindio', 'quindío',
+  'popayan', 'popayán', 'cauca',
+];
+
+// Municipios de Antioquia — si aparece uno, la noticia SÍ es de Antioquia
+// aunque también mencione otra ciudad
+const MUNICIPIOS_ANTIOQUIA_CHECK = [
+  'antioquia', 'medellin', 'medellín', 'uraba', 'urabá',
+  'bajo cauca', 'nordeste', 'suroeste', 'occidente antioque',
+  'valle de aburrá', 'aburra', 'magdalena medio antioque',
+  'turbo', 'apartado', 'apartadó', 'caucasia', 'ituango',
+  'bello', 'itagui', 'itagüí', 'envigado', 'sabaneta',
+  'rionegro', 'marinilla', 'carmen de viboral',
+  'segovia', 'remedios', 'el bagre', 'taraza', 'tarazá',
+  'yarumal', 'valdivia', 'dabeiba', 'frontino',
+  'san carlos', 'granada antioque', 'cocorna', 'cocorná',
+  'briceño', 'briceno', 'yondo', 'yondó',
+];
+
+// ================= SECCIÓN: PATRONES DE RECOMPENSA Y ANÁLISIS =================
+// Recompensas son decisiones administrativas, no hechos de orden público
+// Análisis estadísticos son reportajes, no alertas
+const PATRONES_ADMINISTRATIVOS = [
+  // Recompensas
+  ['recompensa', 'alias'], ['recompensa', 'captura'],
+  ['aumenta recompensa'], ['aumentan recompensa'],
+  ['aumentó recompensa'], ['aumento recompensa'],
+  ['ofrece recompensa', 'alias'], ['ofrecen recompensa', 'alias'],
+  ['gobierno aumenta'], ['gobierno ofrece recompensa'],
+  // Análisis estadísticos y reportajes de datos
+  ['tiene el', '%'], ['tiene el', 'por ciento'],
+  ['¿que hay detras'], ['que hay detras'],
+  ['¿que hay detrás'], ['que hay detrás'],
+  ['los desafios de'], ['los desafíos de'],
+  ['el panorama de'], ['panorama de seguridad'],
+  ['cifras de'], ['estadisticas de'], ['estadísticas de'],
+  ['los numeros de'], ['los números de'],
+  ['el balance de'], ['balance de homicidios'],
+  ['cuantos homicidios'], ['cuántos homicidios'],
+  ['tasa de homicidios'], ['indice de violencia'], ['índice de violencia'],
+];
+
 // ================= SECCIÓN: LISTA NEGRA DE URLs =================
 // Si el link contiene estas rutas, es una página administrativa — no es noticia
 const URL_RUIDO = [
@@ -56,6 +116,18 @@ const PATRONES_OPINION = [
   ['gobernador pide'], ['alcalde pide'], ['ministro pide'],
   ['gobierno pide'], ['gobierno exige'], ['policía pide'], ['policia pide'],
   ['fiscal pide'], ['presidente pide'],
+  ['gobernador exigió'], ['gobernador exigio'], ['gobernador pidió'],
+  ['alcalde exigió'], ['alcalde exigio'], ['alcalde pidió'],
+  ['ministro exigió'], ['ministro exigio'],
+  ['fiscal exigió'], ['fiscal exigio'],
+  // Solicitudes de capturas y órdenes — son declaraciones, no hechos
+  ['exigió', 'orden de captura'], ['exigio', 'orden de captura'],
+  ['pidió', 'orden de captura'], ['pidio', 'orden de captura'],
+  ['solicitó', 'orden de captura'], ['solicito', 'orden de captura'],
+  ['reactivar', 'orden de captura'], ['reactivar', 'captura'],
+  ['pide', 'captura'], ['exige', 'captura'], ['solicita', 'captura'],
+  ['piden', 'captura contra'], ['exigen', 'captura contra'],
+  ['pidió', 'captura'], ['exigió', 'captura'],
 ];
 
 // ================= SECCIÓN: PALABRAS RETROSPECTIVAS =================
@@ -197,6 +269,31 @@ function aplicarFiltro(titulo, categoria, link = '') {
 
   // ── EXCEPCIÓN ABSOLUTA: hipopótamos siempre van a General ─────────────────
   if (tNorm.includes('hipopotamo')) return 'general';
+
+  // ── KILL-SWITCH GEOGRÁFICO: ciudad externa sin conexión con Antioquia ──────
+  // Si menciona Bogotá, Cali, etc. Y NO menciona ningún municipio de Antioquia → descarte
+  const mencionaCiudadExterna = CIUDADES_EXTERNAS.some(c =>
+    tNorm.includes(c.normalize('NFD').replace(/[̀-ͯ]/g, ''))
+  );
+  if (mencionaCiudadExterna) {
+    const mencionaAntioquia = MUNICIPIOS_ANTIOQUIA_CHECK.some(m =>
+      tNorm.includes(m.normalize('NFD').replace(/[̀-ͯ]/g, ''))
+    );
+    if (!mencionaAntioquia) return 'general';
+  }
+
+  // ── PATRONES ADMINISTRATIVOS: recompensas y análisis → General ───────────
+  const tieneCriticaAdmin = PALABRAS_CRITICAS.some(p =>
+    tNorm.includes(p.normalize('NFD').replace(/[̀-ͯ]/g, ''))
+  );
+  if (!tieneCriticaAdmin) {
+    for (const patron of PATRONES_ADMINISTRATIVOS) {
+      const todasPresentes = patron.every(p =>
+        tNorm.includes(p.normalize('NFD').replace(/[̀-ͯ]/g, ''))
+      );
+      if (todasPresentes) return 'general';
+    }
+  }
 
   // ── PASO 0: Filtro de URL administrativa — no es noticia ──────────────────
   if (link && URL_RUIDO.some(r => lNorm.includes(r))) return 'general';
