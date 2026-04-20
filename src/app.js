@@ -8,7 +8,7 @@ const path     = require('path');
 const cron     = require('node-cron');
 
 // ================= SECCIÓN: MÓDULOS INTERNOS =================
-const { initDB }                     = require('../config/database');
+const { initDB, db }                 = require('../config/database');
 const apiRoutes                      = require('./routes/apiRoutes');
 const { limiterGeneral,
         limiterBusqueda,
@@ -50,26 +50,73 @@ app.use((err, req, res, next) => {
   res.status(500).json({ ok: false, error: 'Error interno del servidor' });
 });
 
+// ================= SECCIÓN: LOGS DE SALUD =================
+// Crea la tabla de logs si no existe — registra cada recolección automática
+function iniciarTablaLogs() {
+  try {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS logs_recoleccion (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha         TEXT    NOT NULL DEFAULT (datetime('now')),
+        tipo          TEXT    NOT NULL DEFAULT 'cron',
+        intentadas    INTEGER DEFAULT 0,
+        insertadas    INTEGER DEFAULT 0,
+        duplicadas    INTEGER DEFAULT 0,
+        errores       INTEGER DEFAULT 0,
+        duracion_ms   INTEGER DEFAULT 0,
+        nota          TEXT    DEFAULT NULL
+      )
+    `);
+    console.log('[LOGS] Tabla de salud lista');
+  } catch(e) {
+    console.error('[LOGS] Error creando tabla:', e.message);
+  }
+}
+
+// Guarda un registro de cada recolección
+function guardarLog({ tipo = 'cron', insertadas = 0, duplicadas = 0, errores = 0, duracion_ms = 0, nota = null }) {
+  try {
+    db.run(
+      `INSERT INTO logs_recoleccion (tipo, insertadas, duplicadas, errores, duracion_ms, nota)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [tipo, insertadas, duplicadas, errores, duracion_ms, nota]
+    );
+  } catch(e) {
+    console.error('[LOGS] Error guardando log:', e.message);
+  }
+}
+
 // ================= SECCIÓN: CRON JOBS =================
 const intervalo = parseInt(process.env.CRON_INTERVALO_MINUTOS) || 30;
 
 // Recolecta cada 30 minutos las 24 horas
 cron.schedule(`*/${intervalo} * * * *`, async () => {
+  const inicio = Date.now();
   try {
     const r = await recolectarAntioquia();
-    console.log(`[CRON] ${r.insertadas} nuevas, ${r.duplicadas} duplicadas`);
+    const duracion_ms = Date.now() - inicio;
+    console.log(`[CRON] ${r.insertadas} nuevas, ${r.duplicadas} duplicadas (${duracion_ms}ms)`);
+    guardarLog({ tipo:'cron', insertadas:r.insertadas, duplicadas:r.duplicadas, duracion_ms });
   } catch (err) {
+    const duracion_ms = Date.now() - inicio;
     console.error('[CRON] Error:', err.message);
+    guardarLog({ tipo:'cron', errores:1, duracion_ms, nota:err.message.slice(0,200) });
   }
 });
 
 // Mantenimiento diario a las 3am
 cron.schedule('0 3 * * *', () => {
+  const inicio = Date.now();
   try {
     const eliminadas = limpiarAntiguos();
     vacuumDB();
+    const duracion_ms = Date.now() - inicio;
     console.log(`[CRON] Mantenimiento: ${eliminadas} registros eliminados`);
-  } catch (err) { console.error('[CRON mantenimiento]', err.message); }
+    guardarLog({ tipo:'mantenimiento', nota:`${eliminadas} registros eliminados`, duracion_ms });
+  } catch (err) {
+    console.error('[CRON mantenimiento]', err.message);
+    guardarLog({ tipo:'mantenimiento', errores:1, nota:err.message.slice(0,200) });
+  }
 });
 
 // ================= SECCIÓN: ARRANQUE =================
@@ -78,7 +125,10 @@ async function arrancar() {
     // 1. Inicializamos sql.js y la base de datos
     await initDB();
 
-    // 2. Arrancamos el servidor HTTP
+    // 2. Crear tabla de logs de salud
+    iniciarTablaLogs();
+
+    // 3. Arrancamos el servidor HTTP
     app.listen(PORT, async () => {
       console.log('');
       console.log('═══════════════════════════════════════════');
@@ -93,16 +143,20 @@ async function arrancar() {
         console.log('  DB: lista (primera ejecución)');
       }
 
-      // 3. Recolección inicial al arrancar
+      // 4. Recolección inicial al arrancar
       console.log('  Recolectando noticias iniciales...');
+      const inicio = Date.now();
       try {
         const r = await recolectarAntioquia();
+        const duracion_ms = Date.now() - inicio;
         console.log(`  OK: ${r.insertadas} noticias nuevas`);
+        guardarLog({ tipo:'arranque', insertadas:r.insertadas, duplicadas:r.duplicadas, duracion_ms });
       } catch (err) {
         console.error('  Error en recolección inicial:', err.message);
+        guardarLog({ tipo:'arranque', errores:1, nota:err.message.slice(0,200), duracion_ms: Date.now() - inicio });
       }
 
-      // 4. Recolección histórica si la DB tiene pocas noticias
+      // 5. Recolección histórica si la DB tiene pocas noticias
       try {
         const stats = estadisticasDB();
         if (stats.total < 500) {

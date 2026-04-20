@@ -5,9 +5,10 @@ const router     = express.Router();
 router.get('/dashboard',              controller.getDashboard);
 router.get('/mapa/subregion/:id',     controller.getSubregion);
 router.get('/mapa/municipio',         controller.getMunicipio);
-router.get('/noticias/categoria',     controller.getNoticiasCategoria);   // NUEVO — drill-down municipio
+router.get('/noticias/categoria',     controller.getNoticiasCategoria);
 router.get('/noticias/buscar',        controller.buscarNoticias);
+router.get('/noticias/tendencia',     controller.getTendenciaCategoria);
+router.get('/salud/logs',             controller.getLogs);
 router.post('/noticias/recolectar',   controller.recolectarManual);
-router.get('/noticias/tendencia', controller.getTendenciaCategoria);
 
 module.exports = router;

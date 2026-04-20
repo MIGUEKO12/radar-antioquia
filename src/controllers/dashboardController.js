@@ -201,6 +201,37 @@ async function getTendenciaCategoria(req, res) {
   }
 }
 
+// ================= SECCIÓN: LOGS DE SALUD =================
+async function getLogs(req, res) {
+  try {
+    const { db } = require('../../config/database');
+    const limite = Math.min(parseInt(req.query.limite) || 50, 200);
+
+    const logs = db.all(
+      `SELECT * FROM logs_recoleccion ORDER BY fecha DESC LIMIT ?`,
+      [limite]
+    );
+
+    // Resumen general
+    const resumen = db.get(
+      `SELECT
+        COUNT(*)                          as total_ejecuciones,
+        SUM(insertadas)                   as total_insertadas,
+        SUM(duplicadas)                   as total_duplicadas,
+        SUM(errores)                      as total_errores,
+        ROUND(AVG(duracion_ms))           as promedio_ms,
+        MIN(fecha)                        as primera_ejecucion,
+        MAX(fecha)                        as ultima_ejecucion
+       FROM logs_recoleccion`
+    );
+
+    res.json({ ok: true, resumen, logs });
+  } catch (err) {
+    console.error('[Logs]', err);
+    res.status(500).json({ ok: false, error: 'Error al cargar logs' });
+  }
+}
+
 // ================= SECCIÓN: EXPORTACIONES =================
 module.exports = {
   getDashboard,
@@ -209,5 +240,6 @@ module.exports = {
   getNoticiasCategoria,
   getTendenciaCategoria,
   buscarNoticias,
-  recolectarManual
+  recolectarManual,
+  getLogs
 };
