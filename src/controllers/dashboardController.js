@@ -1,4 +1,4 @@
-// ================= SECCIÓN: DEPENDENCIAS =================
+ // ================= SECCIÓN: DEPENDENCIAS =================
 const NoticiaModel = require('../../models/NoticiaModel');
 const { buscarLibre, recolectarAntioquia } = require('../../services/recolector');
 
@@ -234,6 +234,18 @@ async function getLogs(req, res) {
   }
 }
 
+// ================= SECCIÓN: RECLASIFICACIÓN MASIVA =================
+async function reclasificarDB(req, res) {
+  try {
+    const { reclasificarTodo } = require('../../models/NoticiaModel');
+    const resultado = reclasificarTodo();
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    console.error('[Reclasificar]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
 // ================= SECCIÓN: EXPORTACIONES =================
 module.exports = {
   getDashboard,
@@ -243,5 +255,6 @@ module.exports = {
   getTendenciaCategoria,
   buscarNoticias,
   recolectarManual,
-  getLogs
+  getLogs,
+  reclasificarDB
 };
