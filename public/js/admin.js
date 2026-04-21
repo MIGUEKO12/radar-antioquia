@@ -27,6 +27,27 @@ const MUNICIPIOS_LISTA = [
   'caucasia','el bagre','nechí','tarazá','zaragoza','cáceres',
 ];
 
+// ================= SECCIÓN: TOQUE SECRETO EN LOGO (móvil) =================
+// 5 toques seguidos en el logo "RA" abre el login admin
+let _logoClicks = 0;
+let _logoTimer  = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  const logo = document.querySelector('.header-logo');
+  if (!logo) return;
+  logo.addEventListener('click', () => {
+    _logoClicks++;
+    clearTimeout(_logoTimer);
+    if (_logoClicks >= 5) {
+      _logoClicks = 0;
+      if (AdminState.activo) salirAdmin();
+      else abrirLoginAdmin();
+    } else {
+      _logoTimer = setTimeout(() => { _logoClicks = 0; }, 2000);
+    }
+  });
+});
+
 // ================= SECCIÓN: ATAJO DE TECLADO =================
 let _keysPressed = {};
 document.addEventListener('keydown', e => {
