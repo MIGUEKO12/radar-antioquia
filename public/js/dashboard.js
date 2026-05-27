@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cargarTendenciaIndep();
   };
   iniciarTooltipOP();
+  actualizarSelectMunicipio(''); // Poblar municipios al inicio
   cargarDashboard();
   cargarTendenciaIndep();
   // Verificar noticias nuevas cada 5 minutos SIN recargar la página
@@ -75,6 +76,7 @@ async function cargarDashboard() {
     actualizarMapa(data.mapa, data.recientes, data.resumen.total);
     actualizarClasificacion(data.resumen.porCategoria, data.resumen.total);
     Estado.todasNoticiasPanel = data.recientes;
+    Estado._todasSinFiltro    = null; // Resetear copia al cargar datos nuevos
     Estado.paginaPanel        = 0;
     Estado.filtroCatPanel     = 'orden_publico';
     // Activar botón de orden público al cargar
@@ -92,9 +94,10 @@ async function cargarDashboard() {
   }
 }
 
-// ================= SECCIÓN: VERIFICACIÓN SILENCIOSA =================
-// Verifica si hay noticias nuevas sin recargar la página
+// ================= SECCIÓN: ACTUALIZACIÓN SILENCIOSA =================
+// Actualiza métricas y noticias en el fondo sin tocar filtros ni paginación
 let _ultimoTotal = 0;
+let _ultimoId    = 0; // ID más reciente que tenemos
 
 async function verificarNoticiasNuevas() {
   if (Estado.modo !== 'antioquia' || Estado.subregionActual) return;
@@ -107,46 +110,40 @@ async function verificarNoticiasNuevas() {
     const res  = await fetch(`/api/dashboard?${params}`);
     const data = await res.json();
     if (!data.ok) return;
-    const nuevoTotal = data.resumen.total;
-    if (_ultimoTotal === 0) { _ultimoTotal = nuevoTotal; return; }
-    const nuevas = nuevoTotal - _ultimoTotal;
-    if (nuevas > 0) {
-      mostrarBannerNuevas(nuevas, data);
+
+    // Primera carga — solo guardar referencia
+    if (_ultimoTotal === 0) {
+      _ultimoTotal = data.resumen.total;
+      _ultimoId    = data.recientes[0]?.id || 0;
+      return;
     }
+
+    const nuevoTotal = data.resumen.total;
+    if (nuevoTotal <= _ultimoTotal) return; // Sin cambios
+
+    // Hay noticias nuevas — actualizar silenciosamente
+    const nuevas = data.recientes.filter(n => n.id > _ultimoId);
+
+    // 1. Actualizar métricas y clasificación sin tocar filtros
+    actualizarMetricas(data.resumen.porCategoria);
+    actualizarClasificacion(data.resumen.porCategoria, data.resumen.total);
+    actualizarMapa(data.mapa, data.recientes, data.resumen.total);
+
+    // 2. Agregar noticias nuevas al panel sin resetear filtros ni página
+    if (nuevas.length > 0) {
+      Estado.todasNoticiasPanel = data.recientes;
+      // Solo re-renderizar si estamos en página 0 para no interrumpir navegación
+      if (Estado.paginaPanel === 0) renderNoticiasPanel();
+    }
+
+    // 3. Actualizar hora y referencia
+    $('ultima-actualizacion').textContent =
+      'Actualizado: ' + new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+    _ultimoTotal = nuevoTotal;
+    _ultimoId    = data.recientes[0]?.id || _ultimoId;
+
+    console.log(`[Auto] ${nuevas.length} noticias nuevas agregadas silenciosamente`);
   } catch(e) { console.error('[Verificar]', e); }
-}
-
-function mostrarBannerNuevas(cantidad, data) {
-  // Remover banner anterior si existe
-  const anterior = document.getElementById('banner-nuevas');
-  if (anterior) anterior.remove();
-
-  const banner = document.createElement('div');
-  banner.id = 'banner-nuevas';
-  banner.style.cssText = `
-    position:fixed;top:70px;left:50%;transform:translateX(-50%);
-    z-index:9998;background:#1b5e20;color:white;
-    padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;
-    box-shadow:0 4px 16px rgba(0,0,0,0.3);
-    display:flex;align-items:center;gap:10px;cursor:pointer;
-    animation:slideDown 0.3s ease;
-  `;
-  banner.innerHTML = `
-    🔔 ${cantidad} noticia${cantidad>1?'s':''} nueva${cantidad>1?'s':''} disponible${cantidad>1?'s':''}
-    <button style="background:rgba(255,255,255,0.25);border:none;color:white;padding:4px 12px;border-radius:10px;font-size:12px;cursor:pointer;font-weight:600;">
-      Actualizar
-    </button>
-    <button onclick="document.getElementById('banner-nuevas').remove()" style="background:none;border:none;color:rgba(255,255,255,0.7);font-size:16px;cursor:pointer;padding:0 4px;">✕</button>
-  `;
-  banner.querySelector('button').addEventListener('click', () => {
-    banner.remove();
-    _ultimoTotal = 0;
-    cargarDashboard();
-  });
-  document.body.appendChild(banner);
-
-  // Auto-ocultar después de 30 segundos
-  setTimeout(() => { if (banner.parentNode) banner.remove(); }, 30000);
 }
 
 // ================= SECCIÓN: MAPA =================
@@ -435,6 +432,17 @@ async function entrarMunicipio(nombre, subregion) {
 }
 
 // ================= SECCIÓN: BÚSQUEDA EN ANTIOQUIA =================
+// Normaliza texto: minúsculas + sin tildes + sin caracteres especiales
+function normTexto(s) {
+  return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+// Divide la query en palabras, filtrando artículos cortos (a, de, el, la...)
+function extraerPalabras(q) {
+  const STOPWORDS = new Set(['a','al','de','del','el','la','los','las','en','y','o','un','una','por','con','que','se','su','es']);
+  return normTexto(q).split(/\s+/).filter(p => p.length > 1 && !STOPWORDS.has(p));
+}
+
 async function buscarEnAntioquia() {
   const q = $('q-antioquia').value.trim();
   if (!q) return;
@@ -443,24 +451,36 @@ async function buscarEnAntioquia() {
   try {
     const desde  = $('fecha-desde').value;
     const hasta  = $('fecha-hasta').value;
-    const params = new URLSearchParams({ q: q+' Antioquia' });
+
+    // Enviar cada palabra como query separada para maximizar resultados
+    const palabras = extraerPalabras(q);
+    const queryAPI = palabras.join(' ') + ' Antioquia';
+    const params   = new URLSearchParams({ q: queryAPI, limite: 5000 });
     if (desde) params.append('desde', desde);
     if (hasta) params.append('hasta', hasta);
+
     const res  = await fetch(`/api/noticias/buscar?${params}`);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
-    const qNorm = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+    // Filtrar localmente: la noticia debe contener TODAS las palabras buscadas
+    // Normalización completa: sin tildes, sin mayúsculas — Jericó = jerico = JERICO
     const filtradas = data.noticias.filter(n => {
-      const tNorm = (n.titulo||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-      return tNorm.includes(qNorm);
+      const tNorm = normTexto(n.titulo);
+      return palabras.every(p => tNorm.includes(p));
     });
+
     Estado.noticiasFiltradasMapa = filtradas;
+    Estado._todasSinFiltro       = null;
+
     const ubicadas  = filtradas.filter(n => n.subregion && n.subregion !== 'general');
     const sinUbicar = filtradas.filter(n => !n.subregion || n.subregion === 'general');
     const conteoSubregion = {};
     ubicadas.forEach(n => { conteoSubregion[n.subregion] = (conteoSubregion[n.subregion]||0)+1; });
+
     window.MapaRadar.pintarSubregionesPorCategoria(conteoSubregion, ubicadas);
     if (sinUbicar.length > 0) window.MapaRadar.pintarSinUbicar(sinUbicar.length, sinUbicar);
+
     actualizarNoticias(filtradas, `Antioquia — "${q}" (${filtradas.length})`);
     actualizarClasificacion(contarCategoriasLocal(filtradas), filtradas.length, q);
     actualizarMetricas(contarCategoriasLocal(filtradas));
@@ -526,6 +546,7 @@ function setModo(modo) {
   $('seccion-graficos').classList.toggle('oculto',   !esAntioquia);
   $('metricas-section').classList.toggle('oculto',   !esAntioquia);
   $('buscador-antioquia').classList.toggle('oculto', !esAntioquia);
+  $('filtros-geo').classList.toggle('oculto',        !esAntioquia);
   $('buscador-libre').classList.toggle('oculto',      esAntioquia);
   $('seccion-libre').classList.toggle('oculto',       esAntioquia);
   if (esAntioquia) {
@@ -546,16 +567,28 @@ async function ejecutarBusquedaLibre() {
   mostrarSpinner(true);
   Estado.paginaActual = 1;
   try {
-    const params = new URLSearchParams({ q });
+    // Multi-palabra: enviar todas las palabras y filtrar localmente
+    const palabras = extraerPalabras(q);
+    const params   = new URLSearchParams({ q, limite: 5000 });
     if (desde) params.append('desde', desde);
     if (hasta) params.append('hasta', hasta);
+
     const res  = await fetch(`/api/noticias/buscar?${params}`);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
-    Estado.noticiasLibre = data.noticias;
-    Estado.totalPaginas  = Math.ceil(data.noticias.length / ITEMS_POR_PAGINA);
+
+    // Filtrar localmente con normalización completa
+    const filtradas = palabras.length > 0
+      ? data.noticias.filter(n => {
+          const tNorm = normTexto(n.titulo);
+          return palabras.every(p => tNorm.includes(p));
+        })
+      : data.noticias;
+
+    Estado.noticiasLibre = filtradas;
+    Estado.totalPaginas  = Math.ceil(filtradas.length / ITEMS_POR_PAGINA);
     renderPaginaLibre();
-    const cats = contarCategoriasLocal(data.noticias);
+    const cats = contarCategoriasLocal(filtradas);
     actualizarMetricas(cats);
   } catch(err) {
     $('libre-lista').innerHTML = '<p style="color:#e53935;padding:20px">Error al buscar.</p>';
@@ -832,6 +865,77 @@ function verSinUbicar() {
 }
 window.verSinUbicar = verSinUbicar;
 
+// ================= SECCIÓN: FILTROS GEOGRÁFICOS =================
+const MUNICIPIOS_POR_SUBREGION = {
+  aburra:    ['medellín','bello','itagüí','envigado','sabaneta','la estrella','caldas','copacabana','girardota','barbosa'],
+  uraba:     ['turbo','apartadó','carepa','chigorodó','necoclí','san juan de urabá','arboletes','mutatá','vigía del fuerte','murindó','san pedro de urabá'],
+  norte:     ['belmira','briceño','campamento','carolina del príncipe','don matías','entrerríos','gómez plata','guadalupe','ituango','san andrés de cuerquia','san josé de la montaña','san pedro de los milagros','santa rosa de osos','toledo','valdivia','yarumal','angostura'],
+  nordeste:  ['amalfi','anorí','cisneros','remedios','san roque','santo domingo','segovia','vegachí','yalí','yolombó'],
+  occidente: ['abriaquí','anzá','armenia antioquia','buriticá','caicedo','cañasgordas','dabeiba','ebéjico','frontino','giraldo','heliconia','liborina','olaya','peque','sabanalarga','san jerónimo','santa fe de antioquia','sopetrán','uramita'],
+  oriente:   ['el carmen de viboral','rionegro','marinilla','guarne','la ceja','el retiro','la unión','san vicente ferrer','el santuario','cocorná','granada','san carlos','san luis','san rafael','argelia','nariño','abejorral','sonsón','alejandría','concepción','el peñol','guatapé','san francisco'],
+  suroeste:  ['amagá','andes','angelópolis','betania','betulia','caramanta','ciudad bolívar','concordia','fredonia','hispania','jardín','jericó','la pintada','montebello','pueblorrico','salgar','santa bárbara','támesis','tarso','titiribí','urrao','valparaíso','venecia'],
+  magdalena: ['caracolí','maceo','puerto berrío','puerto nare','puerto triunfo','yondó'],
+  bajocauca: ['caucasia','el bagre','nechí','tarazá','zaragoza','cáceres'],
+};
+
+// Poblar municipios según subregión seleccionada
+function actualizarSelectMunicipio(subregion) {
+  const sel = $('filtro-municipio');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Todos los municipios</option>';
+  const lista = subregion ? (MUNICIPIOS_POR_SUBREGION[subregion] || []) : Object.values(MUNICIPIOS_POR_SUBREGION).flat();
+  lista.sort().forEach(m => {
+    const op = document.createElement('option');
+    op.value = m;
+    op.textContent = m.charAt(0).toUpperCase() + m.slice(1);
+    sel.appendChild(op);
+  });
+}
+
+// Cuando cambia subregión o municipio
+function onFiltroGeoChange() {
+  const subregion = $('filtro-subregion')?.value || '';
+  const municipio = $('filtro-municipio')?.value || '';
+
+  // Al cambiar subregión, actualizar lista de municipios
+  actualizarSelectMunicipio(subregion);
+  if (municipio) $('filtro-municipio').value = municipio;
+
+  // Aplicar filtro
+  aplicarFiltroGeo();
+}
+
+function aplicarFiltroGeo() {
+  const subregion = ($('filtro-subregion')?.value || '').toLowerCase();
+  const municipio = ($('filtro-municipio')?.value || '').toLowerCase();
+
+  if (!subregion && !municipio) {
+    // Sin filtro — mostrar todas
+    Estado.todasNoticiasPanel = Estado._todasSinFiltro || Estado.todasNoticiasPanel;
+    renderNoticiasPanel();
+    return;
+  }
+
+  // Guardar copia original si no existe
+  if (!Estado._todasSinFiltro) {
+    Estado._todasSinFiltro = [...Estado.todasNoticiasPanel];
+  }
+
+  const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+  Estado.todasNoticiasPanel = Estado._todasSinFiltro.filter(n => {
+    const nMuni = norm(n.municipio || '');
+    const nSubr = norm(n.subregion || '');
+    if (municipio && subregion) return nMuni === norm(municipio) && nSubr === norm(subregion);
+    if (municipio) return nMuni === norm(municipio);
+    if (subregion) return nSubr === norm(subregion);
+    return true;
+  });
+
+  Estado.paginaPanel = 0;
+  renderNoticiasPanel();
+}
+
 // ================= SECCIÓN: RESET FILTROS =================
 function resetFiltros() {
   if ($('fecha-desde')) $('fecha-desde').value = '';
@@ -840,6 +944,10 @@ function resetFiltros() {
   if ($('q-libre'))     $('q-libre').value     = '';
   Estado.terminoBusqueda       = null;
   Estado.noticiasFiltradasMapa = null;
+  Estado._todasSinFiltro       = null;
+  if ($('filtro-subregion'))  $('filtro-subregion').value  = '';
+  if ($('filtro-municipio'))  $('filtro-municipio').value  = '';
+  actualizarSelectMunicipio('');
   document.querySelectorAll('#periodo-pills .pill').forEach(b => b.classList.remove('activo'));
   const btnHoy = document.querySelector('#periodo-pills .pill');
   if (btnHoy) btnHoy.classList.add('activo');
@@ -872,3 +980,5 @@ window.cerrarModal           = cerrarModal;
 window.abrirModalSubcategorias  = abrirModalSubcategorias;
 window.cerrarModalSubcategorias = cerrarModalSubcategorias;
 window.toggleFicha           = toggleFicha;
+window.onFiltroGeoChange     = onFiltroGeoChange;
+window.actualizarSelectMunicipio = actualizarSelectMunicipio;

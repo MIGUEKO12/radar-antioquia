@@ -40,6 +40,27 @@
       <input type="text" id="q-antioquia" placeholder="Buscar en Antioquia: ELN, minería, inundación..." maxlength="100">
       <button onclick="buscarEnAntioquia()">Buscar</button>
     </div>
+    <!-- FILTROS REGIÓN Y MUNICIPIO — solo visibles en modo Antioquia -->
+    <div id="filtros-geo" class="buscador-inline" style="gap:6px;">
+      <select id="filtro-subregion" onchange="onFiltroGeoChange()"
+        style="padding:6px 10px;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;color:#374151;background:white;cursor:pointer;">
+        <option value="">Todas las subregiones</option>
+        <option value="aburra">Valle de Aburrá</option>
+        <option value="uraba">Urabá</option>
+        <option value="norte">Norte</option>
+        <option value="nordeste">Nordeste</option>
+        <option value="occidente">Occidente</option>
+        <option value="oriente">Oriente</option>
+        <option value="suroeste">Suroeste</option>
+        <option value="magdalena">Magdalena Medio</option>
+        <option value="bajocauca">Bajo Cauca</option>
+      </select>
+      <select id="filtro-municipio" onchange="onFiltroGeoChange()"
+        style="padding:6px 10px;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;color:#374151;background:white;cursor:pointer;">
+        <option value="">Todos los municipios</option>
+      </select>
+    </div>
+
     <div id="buscador-libre" class="buscador-inline oculto">
       <input type="text" id="q-libre" placeholder="Buscar cualquier noticia..." maxlength="100">
       <button onclick="ejecutarBusquedaLibre()">Buscar</button>
