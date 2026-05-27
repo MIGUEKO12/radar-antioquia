@@ -431,31 +431,35 @@ async function entrarMunicipio(nombre, subregion) {
   finally { mostrarSpinner(false); }
 }
 
+// ================= SECCIÓN: NORMALIZACIÓN Y BÚSQUEDA INTELIGENTE =================
+// Normaliza texto eliminando tildes y poniendo en minúsculas
+const normTexto = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+// Filtra noticias que contengan TODAS las palabras buscadas
+// "jericó atentado" = noticias con ambas palabras (sin importar tildes)
+function filtrarPorPalabras(noticias, q) {
+  const palabras = normTexto(q).split(/\s+/).filter(p => p.length > 1);
+  if (!palabras.length) return noticias;
+  return noticias.filter(n => {
+    const texto = normTexto(n.titulo) + ' ' + normTexto(n.municipio || '') + ' ' + normTexto(n.subregion || '');
+    return palabras.every(p => texto.includes(p));
+  });
+}
+
 // ================= SECCIÓN: BÚSQUEDA EN ANTIOQUIA =================
-// Normaliza texto: minúsculas + sin tildes + sin caracteres especiales
-function normTexto(s) {
-  return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-}
-
-// Divide la query en palabras, filtrando artículos cortos (a, de, el, la...)
-function extraerPalabras(q) {
-  const STOPWORDS = new Set(['a','al','de','del','el','la','los','las','en','y','o','un','una','por','con','que','se','su','es']);
-  return normTexto(q).split(/\s+/).filter(p => p.length > 1 && !STOPWORDS.has(p));
-}
-
 async function buscarEnAntioquia() {
-  const q = $('q-antioquia').value.trim();
+  const q = ($('q-antioquia').value || '').trim();
   if (!q) return;
   mostrarSpinner(true);
   Estado.terminoBusqueda = q;
-  try {
-    const desde  = $('fecha-desde').value;
-    const hasta  = $('fecha-hasta').value;
+  Estado._todasSinFiltro = null;
 
-    // Enviar cada palabra como query separada para maximizar resultados
-    const palabras = extraerPalabras(q);
-    const queryAPI = palabras.join(' ') + ' Antioquia';
-    const params   = new URLSearchParams({ q: queryAPI, limite: 5000 });
+  try {
+    const desde = $('fecha-desde').value;
+    const hasta = $('fecha-hasta').value;
+
+    // Enviar al servidor con rango de fechas completo
+    const params = new URLSearchParams({ q: q + ' Antioquia', modo: 'antioquia' });
     if (desde) params.append('desde', desde);
     if (hasta) params.append('hasta', hasta);
 
@@ -463,16 +467,10 @@ async function buscarEnAntioquia() {
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
 
-    // Filtrar localmente: la noticia debe contener TODAS las palabras buscadas
-    // Normalización completa: sin tildes, sin mayúsculas — Jericó = jerico = JERICO
-    const filtradas = data.noticias.filter(n => {
-      const tNorm = normTexto(n.titulo);
-      return palabras.every(p => tNorm.includes(p));
-    });
+    // Filtrar localmente con normalización de tildes y palabras individuales
+    const filtradas = filtrarPorPalabras(data.noticias, q);
 
     Estado.noticiasFiltradasMapa = filtradas;
-    Estado._todasSinFiltro       = null;
-
     const ubicadas  = filtradas.filter(n => n.subregion && n.subregion !== 'general');
     const sinUbicar = filtradas.filter(n => !n.subregion || n.subregion === 'general');
     const conteoSubregion = {};
@@ -488,6 +486,7 @@ async function buscarEnAntioquia() {
   } catch(err) { console.error('[BuscarAntioquia]', err); }
   finally { mostrarSpinner(false); }
 }
+
 
 $('q-antioquia') && $('q-antioquia').addEventListener('keypress', e => { if (e.key==='Enter') buscarEnAntioquia(); });
 
@@ -560,40 +559,32 @@ function setModo(modo) {
 
 // ================= SECCIÓN: BÚSQUEDA LIBRE =================
 async function ejecutarBusquedaLibre() {
-  const q     = $('q-libre').value.trim();
+  const q     = ($('q-libre').value || '').trim();
   const desde = $('fecha-desde').value;
   const hasta = $('fecha-hasta').value;
   if (!q) { $('q-libre').focus(); return; }
   mostrarSpinner(true);
   Estado.paginaActual = 1;
   try {
-    // Multi-palabra: enviar todas las palabras y filtrar localmente
-    const palabras = extraerPalabras(q);
-    const params   = new URLSearchParams({ q, limite: 5000 });
+    const params = new URLSearchParams({ q });
     if (desde) params.append('desde', desde);
     if (hasta) params.append('hasta', hasta);
-
     const res  = await fetch(`/api/noticias/buscar?${params}`);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
 
-    // Filtrar localmente con normalización completa
-    const filtradas = palabras.length > 0
-      ? data.noticias.filter(n => {
-          const tNorm = normTexto(n.titulo);
-          return palabras.every(p => tNorm.includes(p));
-        })
-      : data.noticias;
+    // Filtrar con normalización de tildes y palabras individuales
+    const filtradas = filtrarPorPalabras(data.noticias, q);
 
     Estado.noticiasLibre = filtradas;
     Estado.totalPaginas  = Math.ceil(filtradas.length / ITEMS_POR_PAGINA);
     renderPaginaLibre();
-    const cats = contarCategoriasLocal(filtradas);
-    actualizarMetricas(cats);
+    actualizarMetricas(contarCategoriasLocal(filtradas));
   } catch(err) {
     $('libre-lista').innerHTML = '<p style="color:#e53935;padding:20px">Error al buscar.</p>';
   } finally { mostrarSpinner(false); }
 }
+
 
 function renderPaginaLibre() {
   const inicio = (Estado.paginaActual-1)*ITEMS_POR_PAGINA;

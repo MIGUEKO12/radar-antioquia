@@ -2,11 +2,8 @@
 const NoticiaModel = require('../../models/NoticiaModel');
 const { buscarLibre, recolectarAntioquia } = require('../../services/recolector');
 
-
-
 // ================= SECCIÓN: HELPER PERÍODO =================
 function resolverPeriodo(query) {
-  // Ajustar a hora Colombia (UTC-5) para que "hoy" coincida con la fecha local
   const ahora  = new Date();
   const co     = new Date(ahora.getTime() - (5 * 60 * 60 * 1000));
   const hoyStr = co.toISOString().split('T')[0];
@@ -34,7 +31,6 @@ function resolverPeriodo(query) {
   }
 
   if (desde > hasta) desde = hasta;
-
   console.log(`[Período] periodo="${query.periodo}" desde="${desde}" hasta="${hasta}"`);
   return { desde, hasta };
 }
@@ -119,15 +115,53 @@ async function getMunicipio(req, res) {
 }
 
 // ================= SECCIÓN: BÚSQUEDA =================
+// Busca en la DB directamente con palabras individuales y rango de fechas
+// Permite buscar en TODO el histórico disponible sin límite de 90 días
 async function buscarNoticias(req, res) {
   try {
-    const q     = String(req.query.q     || 'Antioquia').slice(0,100);
-    const desde = String(req.query.desde || '').slice(0,10);
-    const hasta = String(req.query.hasta || '').slice(0,10);
+    const q     = String(req.query.q     || '').slice(0, 200);
+    const desde = String(req.query.desde || '').slice(0, 10);
+    const hasta = String(req.query.hasta || '').slice(0, 10);
 
     if (!q.trim()) return res.status(400).json({ ok:false, error:'El parámetro q es requerido' });
 
-    const noticias = await buscarLibre(q, desde||null, hasta||null);
+    const { db } = require('../../config/database');
+
+    // Normalizar query — quitar tildes y pasar a minúsculas
+    const normalizar = s => s.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // Dividir en palabras individuales — ignorar palabras de 1 letra
+    const palabras = normalizar(q).split(/\s+/).filter(p => p.length > 1);
+
+    if (!palabras.length) {
+      return res.status(400).json({ ok:false, error:'Ingresa al menos una palabra' });
+    }
+
+    // Construir query SQLite con LIKE para cada palabra
+    // Cada palabra se busca en titulo, municipio y subregion
+    let sql    = `SELECT * FROM noticias WHERE 1=1`;
+    const args = [];
+
+    // Filtro de fechas — acepta cualquier rango histórico
+    if (desde) { sql += ` AND DATE(fecha) >= ?`; args.push(desde); }
+    if (hasta) { sql += ` AND DATE(fecha) <= ?`; args.push(hasta); }
+
+    // Cada palabra debe aparecer en algún campo del título, municipio o subregion
+    for (const palabra of palabras) {
+      sql += ` AND (
+        lower(titulo)    LIKE ? OR
+        lower(municipio) LIKE ? OR
+        lower(subregion) LIKE ?
+      )`;
+      // SQLite no tiene unaccent — comparamos con el texto ya normalizado en la DB
+      // y también buscamos con la palabra normalizada
+      args.push(`%${palabra}%`, `%${palabra}%`, `%${palabra}%`);
+    }
+
+    sql += ` ORDER BY score DESC, fecha DESC LIMIT 5000`;
+
+    const noticias = db.all(sql, args);
     res.json({ ok:true, query:q, total:noticias.length, noticias });
   } catch (err) {
     console.error('[Buscar]', err);
@@ -155,7 +189,6 @@ async function getNoticiasCategoria(req, res) {
       return res.status(400).json({ ok: false, error: 'Parámetro categoria requerido' });
     }
 
-    // categoria='todas' devuelve todas sin filtrar — usado por modal de tendencia
     const todasNoticias = NoticiaModel.obtenerNoticias({ desde, hasta, modo:'antioquia', limite: 2000 });
     const noticias = categoria === 'todas'
       ? todasNoticias
@@ -214,7 +247,6 @@ async function getLogs(req, res) {
       [limite]
     );
 
-    // Resumen general
     const resumen = db.get(
       `SELECT
         COUNT(*)                          as total_ejecuciones,
@@ -253,9 +285,7 @@ async function adminLogin(req, res) {
     const adminPass = process.env.ADMIN_PASSWORD;
     if (!adminPass) return res.status(500).json({ ok:false, error:'Admin no configurado' });
     if (password !== adminPass) return res.status(401).json({ ok:false, error:'Contraseña incorrecta' });
-    // Token simple basado en la contraseña — no necesitamos JWT para esto
     const token = Buffer.from(adminPass + Date.now()).toString('base64');
-    // Guardar token en memoria con expiración de 4 horas
     global._adminTokens = global._adminTokens || {};
     global._adminTokens[token] = Date.now() + (4 * 60 * 60 * 1000);
     res.json({ ok:true, token });
@@ -285,17 +315,14 @@ async function adminCambiarCategoria(req, res) {
     const { db } = require('../../config/database');
     const { MUNICIPIO_A_SUBREGION } = require('../../config/municipios');
 
-    // Detectar subregion del municipio seleccionado
     const subregion = municipio ? (MUNICIPIO_A_SUBREGION[municipio.toLowerCase()] || 'general') : null;
 
-    // Actualizar en la tabla principal
     if (municipio && subregion) {
       db.run('UPDATE noticias SET categoria = ?, municipio = ?, subregion = ? WHERE id = ?', [categoria, municipio, subregion, id]);
     } else {
       db.run('UPDATE noticias SET categoria = ? WHERE id = ?', [categoria, id]);
     }
 
-    // Guardar en tabla fijas para que el cron lo respete siempre
     if (hash) {
       db.run(
         `INSERT OR REPLACE INTO noticias_fijas (hash, categoria, municipio, subregion) VALUES (?, ?, ?, ?)`,
@@ -303,7 +330,7 @@ async function adminCambiarCategoria(req, res) {
       );
     }
 
-    console.log(`[Admin] Noticia ${id} → ${categoria} ${municipio ? '/ '+municipio : ''} (bloqueado)`);
+    console.log(`[Admin] Noticia ${id} → ${categoria} ${municipio ? '/ '+municipio : ''}`);
     res.json({ ok:true, id, categoria, municipio, subregion });
   } catch(err) {
     res.status(500).json({ ok:false, error:err.message });
@@ -317,10 +344,8 @@ async function adminEliminarNoticia(req, res) {
     if (!id) return res.status(400).json({ ok:false, error:'ID requerido' });
     const { db } = require('../../config/database');
 
-    // Eliminar de la tabla principal
     db.run('DELETE FROM noticias WHERE id = ?', [id]);
 
-    // Bloquear el hash permanentemente para que el cron no la vuelva a insertar
     if (hash) {
       db.run(
         `INSERT OR IGNORE INTO noticias_ignoradas (hash, titulo, motivo) VALUES (?, ?, 'admin')`,
@@ -346,8 +371,7 @@ async function adminVerCambios(req, res) {
     );
 
     const fijas = db.all(
-      `SELECT f.hash, f.categoria, f.municipio, f.subregion, f.fecha,
-              n.titulo
+      `SELECT f.hash, f.categoria, f.municipio, f.subregion, f.fecha, n.titulo
        FROM noticias_fijas f
        LEFT JOIN noticias n ON n.hash = f.hash
        ORDER BY f.fecha DESC`,
@@ -357,7 +381,7 @@ async function adminVerCambios(req, res) {
     res.json({
       ok: true,
       ignoradas: { total: ignoradas.length, items: ignoradas },
-      fijas:     { total: fijas.length,     items: fijas     }
+      fijas:     { total: fijas.length,     items: fijas }
     });
   } catch(err) {
     res.status(500).json({ ok: false, error: err.message });
