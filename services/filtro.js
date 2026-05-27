@@ -3,7 +3,7 @@ const { MUNICIPIO_A_SUBREGION } = require('../config/municipios');
 
 // ================= SECCIÓN: CIUDADES FUERA DE ANTIOQUIA =================
 const CIUDADES_EXTERNAS = [
-  'bogota', 'bogota', 'cundinamarca',
+  'bogota', 'cundinamarca', 'soacha', 'chia', 'zipaquira',
   'cali', 'valle del cauca',
   'barranquilla', 'cartagena de indias',
   'bucaramanga', 'cucuta', 'norte de santander',
@@ -66,6 +66,62 @@ const GRUPOS_ARMADOS = [
   'oficina del doce', 'el oasis', 'union subversiva',
   'los marihuanos', 'el mesa', 'gdco', 'gdo',
   'frente 36', 'frente 18', 'frente 37',
+];
+
+// ================= SECCIÓN: PATRONES DE DESCARTE — REGLA 3 (Hechos concretos) =================
+// Noticias que NO reportan un hecho concreto sino análisis, contexto o antecedentes
+// Basado en las reglas del clasificador de IA
+const PATRONES_NO_HECHO = [
+  // Preguntas retóricas — no es un hecho, es análisis
+  ['¿podria', 'carcel'], ['¿podría', 'cárcel'],
+  ['podria terminar en carcel'], ['podría terminar en cárcel'],
+  ['¿que pasaria'], ['¿qué pasaría'],
+  ['¿es posible que'], ['¿puede ser que'],
+  ['¿como quedo'], ['¿cómo quedó'],
+  // Balances estadísticos y cifras acumuladas
+  ['en lo que va del año'], ['en lo que va de'],
+  ['van ', ' capturas'], ['van ', ' homicidios'],
+  ['van ', ' casos'], ['acumulado de'],
+  ['balance del año'], ['cifras del año'],
+  ['primer semestre'], ['segundo semestre'],
+  ['en 2024 van'], ['en 2025 van'], ['en 2026 van'],
+  // Análisis e investigaciones sin hecho nuevo
+  ['informe de la'], ['segun informe'], ['según informe'],
+  ['reportaje especial'], ['investigacion especial'], ['investigación especial'],
+  ['los desafios'], ['los desafíos'],
+  ['el panorama de'], ['asi opera'], ['así opera'],
+  ['como funciona'], ['cómo funciona'],
+  ['la historia de'], ['el origen de'],
+  ['perfil de'], ['quien es'], ['quién es'],
+  ['donde se encuentra'], ['dónde se encuentra'],
+  // Conmemoraciones y aniversarios
+  ['diez años de'], ['10 años de'], ['aniversario de'],
+  ['en memoria de'], ['a un año de'], ['a dos años de'],
+  ['conmemoran'], ['conmemoracion'], ['conmemoración'],
+  // Noticias de cooperación internacional sin hecho de seguridad
+  ['entrega equipos'], ['dona equipos'], ['dona computadores'],
+  ['entrega computadores'], ['entrega dotacion'], ['entrega dotación'],
+  ['impulsa mineria responsable'], ['impulsa minería responsable'],
+  ['fortalece presencia'], ['impulsa proyecto'],
+  // Actos culturales y deportivos
+  ['chapecoense'], ['memorial deportivo'],
+  ['evento cultural'], ['festival de'],
+];
+
+// ================= SECCIÓN: PATRONES DE DESCARTE — DELITOS COMUNES SIN GRUPOS =================
+// Delitos comunes que NO son orden público según Regla 3
+// Abuso sexual, hurto, violencia intrafamiliar sin grupos armados
+const PATRONES_DELITO_COMUN = [
+  // Abuso sexual sin grupo armado
+  ['abuso sexual'], ['tocamientos'], ['abuso de menores'],
+  ['abuso de estudiantes'], ['acoso sexual'],
+  ['violacion'], ['violación'],
+  // Hurto y delitos comunes
+  ['roba turistas'], ['robar turistas'], ['drogar y robar'],
+  ['fleteo'], ['raponazo'],
+  // Violencia intrafamiliar
+  ['violencia intrafamiliar'], ['maltrato conyugal'],
+  ['violencia domestica'], ['violencia doméstica'],
 ];
 
 // ================= SECCIÓN: PATRONES OPINIÓN =================
@@ -216,6 +272,29 @@ function aplicarFiltro(titulo, categoria, link = '') {
   const tieneCritica = PALABRAS_CRITICAS.some(p =>
     tNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
   );
+
+  // ── PATRONES NO HECHO: preguntas, balances, aniversarios → General ────────
+  // Basado en Regla 3 del clasificador IA: solo hechos concretos y actuales
+  for (const patron of PATRONES_NO_HECHO) {
+    const ok = patron.every(p =>
+      tNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+    );
+    if (ok) return 'general';
+  }
+
+  // ── PATRONES DELITO COMÚN: abuso, hurto sin grupos → General ─────────────
+  // Solo aplica si NO hay palabras críticas de violencia armada
+  const tieneGrupoArmado = GRUPOS_ARMADOS.some(g =>
+    tNorm.includes(g.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+  );
+  if (!tieneCritica && !tieneGrupoArmado) {
+    for (const patron of PATRONES_DELITO_COMUN) {
+      const ok = patron.every(p =>
+        tNorm.includes(p.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+      );
+      if (ok) return 'general';
+    }
+  }
 
   // Patrones administrativos
   if (!tieneCritica) {
