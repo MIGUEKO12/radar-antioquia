@@ -119,9 +119,11 @@ async function getMunicipio(req, res) {
 // Permite buscar en TODO el histórico disponible sin límite de 90 días
 async function buscarNoticias(req, res) {
   try {
-    const q     = String(req.query.q     || '').slice(0, 200);
-    const desde = String(req.query.desde || '').slice(0, 10);
-    const hasta = String(req.query.hasta || '').slice(0, 10);
+    const q         = String(req.query.q         || '').slice(0, 200);
+    const desde     = String(req.query.desde     || '').slice(0, 10);
+    const hasta     = String(req.query.hasta     || '').slice(0, 10);
+    const subregion = String(req.query.subregion || '').slice(0, 50);
+    const municipio = String(req.query.municipio || '').slice(0, 100);
 
     if (!q.trim()) return res.status(400).json({ ok:false, error:'El parámetro q es requerido' });
 
@@ -138,24 +140,27 @@ async function buscarNoticias(req, res) {
       return res.status(400).json({ ok:false, error:'Ingresa al menos una palabra' });
     }
 
-    // Construir query SQLite con LIKE para cada palabra
-    // Cada palabra se busca en titulo, municipio y subregion
+    // Construir query SQLite con filtros combinados
     let sql    = `SELECT * FROM noticias WHERE 1=1`;
     const args = [];
 
     // Filtro de fechas — acepta cualquier rango histórico
-    if (desde) { sql += ` AND DATE(fecha) >= ?`; args.push(desde); }
-    if (hasta) { sql += ` AND DATE(fecha) <= ?`; args.push(hasta); }
+    if (desde)    { sql += ` AND DATE(fecha) >= ?`;       args.push(desde); }
+    if (hasta)    { sql += ` AND DATE(fecha) <= ?`;       args.push(hasta); }
 
-    // Cada palabra debe aparecer en algún campo del título, municipio o subregion
+    // Filtro de subregión
+    if (subregion) { sql += ` AND lower(subregion) = ?`; args.push(subregion.toLowerCase()); }
+
+    // Filtro de municipio
+    if (municipio) { sql += ` AND lower(municipio) = ?`; args.push(municipio.toLowerCase()); }
+
+    // Cada palabra debe aparecer en título, municipio o subregión
     for (const palabra of palabras) {
       sql += ` AND (
         lower(titulo)    LIKE ? OR
         lower(municipio) LIKE ? OR
         lower(subregion) LIKE ?
       )`;
-      // SQLite no tiene unaccent — comparamos con el texto ya normalizado en la DB
-      // y también buscamos con la palabra normalizada
       args.push(`%${palabra}%`, `%${palabra}%`, `%${palabra}%`);
     }
 

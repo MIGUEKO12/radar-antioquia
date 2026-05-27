@@ -448,44 +448,79 @@ function filtrarPorPalabras(noticias, q) {
 
 // ================= SECCIÓN: BÚSQUEDA EN ANTIOQUIA =================
 async function buscarEnAntioquia() {
-  const q = ($('q-antioquia').value || '').trim();
-  if (!q) return;
+  const q          = ($('q-antioquia').value || '').trim();
+  const subregion  = ($('filtro-subregion')?.value  || '').toLowerCase();
+  const municipio  = ($('filtro-municipio')?.value  || '').toLowerCase();
+  const desde      = $('fecha-desde').value;
+  const hasta      = $('fecha-hasta').value;
+
+  // Requiere al menos un criterio de búsqueda
+  if (!q && !subregion && !municipio) return;
+
   mostrarSpinner(true);
-  Estado.terminoBusqueda = q;
+  Estado.terminoBusqueda = q || null;
   Estado._todasSinFiltro = null;
 
   try {
-    const desde = $('fecha-desde').value;
-    const hasta = $('fecha-hasta').value;
-
-    // Enviar al servidor con rango de fechas completo
-    const params = new URLSearchParams({ q: q + ' Antioquia', modo: 'antioquia' });
-    if (desde) params.append('desde', desde);
-    if (hasta) params.append('hasta', hasta);
+    // Construir parámetros para el servidor
+    const params = new URLSearchParams();
+    // Si hay texto buscado, enviarlo; si no, enviar "Antioquia" para traer todo
+    params.append('q', q ? q + ' Antioquia' : 'Antioquia');
+    if (desde)    params.append('desde',    desde);
+    if (hasta)    params.append('hasta',    hasta);
+    if (subregion) params.append('subregion', subregion);
+    if (municipio) params.append('municipio', municipio);
 
     const res  = await fetch(`/api/noticias/buscar?${params}`);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
 
     // Filtrar localmente con normalización de tildes y palabras individuales
-    const filtradas = filtrarPorPalabras(data.noticias, q);
+    let filtradas = q ? filtrarPorPalabras(data.noticias, q) : data.noticias;
+
+    // Aplicar filtro de subregión local si viene del selector
+    if (subregion) {
+      filtradas = filtradas.filter(n =>
+        normTexto(n.subregion || '') === normTexto(subregion)
+      );
+    }
+
+    // Aplicar filtro de municipio local si viene del selector
+    if (municipio) {
+      filtradas = filtradas.filter(n =>
+        normTexto(n.municipio || '') === normTexto(municipio)
+      );
+    }
 
     Estado.noticiasFiltradasMapa = filtradas;
+
     const ubicadas  = filtradas.filter(n => n.subregion && n.subregion !== 'general');
     const sinUbicar = filtradas.filter(n => !n.subregion || n.subregion === 'general');
     const conteoSubregion = {};
-    ubicadas.forEach(n => { conteoSubregion[n.subregion] = (conteoSubregion[n.subregion]||0)+1; });
+    ubicadas.forEach(n => {
+      conteoSubregion[n.subregion] = (conteoSubregion[n.subregion] || 0) + 1;
+    });
 
     window.MapaRadar.pintarSubregionesPorCategoria(conteoSubregion, ubicadas);
     if (sinUbicar.length > 0) window.MapaRadar.pintarSinUbicar(sinUbicar.length, sinUbicar);
 
-    actualizarNoticias(filtradas, `Antioquia — "${q}" (${filtradas.length})`);
-    actualizarClasificacion(contarCategoriasLocal(filtradas), filtradas.length, q);
+    // Construir título descriptivo de la búsqueda
+    const partes = [];
+    if (q)         partes.push(`"${q}"`);
+    if (subregion) partes.push(subregion.charAt(0).toUpperCase() + subregion.slice(1));
+    if (municipio) partes.push(municipio.charAt(0).toUpperCase() + municipio.slice(1));
+    if (desde || hasta) partes.push(`${desde || '...'} → ${hasta || '...'}`);
+    const titulo = `Antioquia — ${partes.join(' · ')} (${filtradas.length})`;
+
+    actualizarNoticias(filtradas, titulo);
+    actualizarClasificacion(contarCategoriasLocal(filtradas), filtradas.length, partes.join(' · '));
     actualizarMetricas(contarCategoriasLocal(filtradas));
     mostrarAviso(ubicadas.length, sinUbicar.length, sinUbicar);
+
   } catch(err) { console.error('[BuscarAntioquia]', err); }
   finally { mostrarSpinner(false); }
 }
+
 
 
 $('q-antioquia') && $('q-antioquia').addEventListener('keypress', e => { if (e.key==='Enter') buscarEnAntioquia(); });
@@ -888,12 +923,11 @@ function onFiltroGeoChange() {
   const subregion = $('filtro-subregion')?.value || '';
   const municipio = $('filtro-municipio')?.value || '';
 
-  // Al cambiar subregión, actualizar lista de municipios
+  // Al cambiar subregión, actualizar lista de municipios y limpiar municipio
   actualizarSelectMunicipio(subregion);
-  if (municipio) $('filtro-municipio').value = municipio;
 
-  // Aplicar filtro
-  aplicarFiltroGeo();
+  // Disparar búsqueda combinada
+  buscarEnAntioquia();
 }
 
 function aplicarFiltroGeo() {
@@ -937,8 +971,7 @@ function resetFiltros() {
   Estado.noticiasFiltradasMapa = null;
   Estado._todasSinFiltro       = null;
   if ($('filtro-subregion'))  $('filtro-subregion').value  = '';
-  if ($('filtro-municipio'))  $('filtro-municipio').value  = '';
-  actualizarSelectMunicipio('');
+  if ($('filtro-municipio'))  { actualizarSelectMunicipio(''); $('filtro-municipio').value = ''; }
   document.querySelectorAll('#periodo-pills .pill').forEach(b => b.classList.remove('activo'));
   const btnHoy = document.querySelector('#periodo-pills .pill');
   if (btnHoy) btnHoy.classList.add('activo');
