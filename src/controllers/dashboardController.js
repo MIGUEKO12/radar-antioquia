@@ -124,6 +124,7 @@ async function buscarNoticias(req, res) {
     const hasta     = String(req.query.hasta     || '').slice(0, 10);
     const subregion = String(req.query.subregion || '').slice(0, 50);
     const municipio = String(req.query.municipio || '').slice(0, 100);
+    const modo      = String(req.query.modo      || '').slice(0, 20);
 
     if (!q.trim()) return res.status(400).json({ ok:false, error:'El parámetro q es requerido' });
 
@@ -144,6 +145,9 @@ async function buscarNoticias(req, res) {
     let sql    = `SELECT * FROM noticias WHERE 1=1`;
     const args = [];
 
+    // Filtro de modo — antioquia o libre
+    if (modo === 'antioquia') { sql += ` AND modo = ?`; args.push('antioquia'); }
+
     // Filtro de fechas — acepta cualquier rango histórico
     if (desde)    { sql += ` AND DATE(fecha) >= ?`;       args.push(desde); }
     if (hasta)    { sql += ` AND DATE(fecha) <= ?`;       args.push(hasta); }
@@ -154,19 +158,49 @@ async function buscarNoticias(req, res) {
     // Filtro de municipio
     if (municipio) { sql += ` AND lower(municipio) = ?`; args.push(municipio.toLowerCase()); }
 
-    // Cada palabra debe aparecer en título, municipio o subregión
+    // Cada palabra debe aparecer en título, municipio, subregión o query
+    // Así "tusi medellín" encuentra noticias donde "tusi" está en titulo
+    // y "medellín" está en municipio — no necesitan estar en el mismo campo
     for (const palabra of palabras) {
       sql += ` AND (
         lower(titulo)    LIKE ? OR
         lower(municipio) LIKE ? OR
-        lower(subregion) LIKE ?
+        lower(subregion) LIKE ? OR
+        lower(query)     LIKE ?
       )`;
-      args.push(`%${palabra}%`, `%${palabra}%`, `%${palabra}%`);
+      args.push(`%${palabra}%`, `%${palabra}%`, `%${palabra}%`, `%${palabra}%`);
     }
 
     sql += ` ORDER BY score DESC, fecha DESC LIMIT 5000`;
 
-    const noticias = db.all(sql, args);
+    let noticias = db.all(sql, args);
+
+    // Si no hay resultados con todas las palabras, buscar con al menos la mitad
+    // Igual que Google — si no encuentra todo, muestra lo más relevante
+    if (noticias.length === 0 && palabras.length > 1) {
+      let sqlFlex    = `SELECT * FROM noticias WHERE 1=1`;
+      const argsFlex = [];
+
+      if (modo === 'antioquia') { sqlFlex += ` AND modo = ?`; argsFlex.push('antioquia'); }
+      if (desde)    { sqlFlex += ` AND DATE(fecha) >= ?`; argsFlex.push(desde); }
+      if (hasta)    { sqlFlex += ` AND DATE(fecha) <= ?`; argsFlex.push(hasta); }
+      if (subregion) { sqlFlex += ` AND lower(subregion) = ?`; argsFlex.push(subregion.toLowerCase()); }
+      if (municipio) { sqlFlex += ` AND lower(municipio) = ?`; argsFlex.push(municipio.toLowerCase()); }
+
+      // Buscar con OR en vez de AND — al menos una palabra debe aparecer
+      const condiciones = palabras.map(() =>
+        `lower(titulo) LIKE ? OR lower(municipio) LIKE ? OR lower(subregion) LIKE ?`
+      ).join(' OR ');
+
+      sqlFlex += ` AND (${condiciones})`;
+      for (const palabra of palabras) {
+        argsFlex.push(`%${palabra}%`, `%${palabra}%`, `%${palabra}%`);
+      }
+
+      sqlFlex += ` ORDER BY score DESC, fecha DESC LIMIT 5000`;
+      noticias = db.all(sqlFlex, argsFlex);
+    }
+
     res.json({ ok:true, query:q, total:noticias.length, noticias });
   } catch (err) {
     console.error('[Buscar]', err);

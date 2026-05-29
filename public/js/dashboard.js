@@ -438,12 +438,29 @@ const normTexto = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]
 // Filtra noticias que contengan TODAS las palabras buscadas
 // "jericó atentado" = noticias con ambas palabras (sin importar tildes)
 function filtrarPorPalabras(noticias, q) {
+  if (!q || !q.trim()) return noticias;
   const palabras = normTexto(q).split(/\s+/).filter(p => p.length > 1);
   if (!palabras.length) return noticias;
-  return noticias.filter(n => {
-    const texto = normTexto(n.titulo) + ' ' + normTexto(n.municipio || '') + ' ' + normTexto(n.subregion || '');
-    return palabras.every(p => texto.includes(p));
-  });
+
+  // Contar cuántas palabras aparecen en la noticia
+  // Busca en título + municipio + subregión para cubrir "tusi medellín"
+  const contarHits = n => {
+    const texto = normTexto(n.titulo) + ' ' +
+                  normTexto(n.municipio  || '') + ' ' +
+                  normTexto(n.subregion  || '');
+    return palabras.filter(p => texto.includes(p)).length;
+  };
+
+  // Intento 1: todas las palabras presentes
+  const todas = noticias.filter(n => contarHits(n) === palabras.length);
+  if (todas.length > 0) return todas;
+
+  // Intento 2: al menos una palabra, ordenadas por relevancia
+  return noticias
+    .map(n => ({ n, hits: contarHits(n) }))
+    .filter(({ hits }) => hits > 0)
+    .sort((a, b) => b.hits - a.hits)
+    .map(({ n }) => n);
 }
 
 // ================= SECCIÓN: BÚSQUEDA EN ANTIOQUIA =================
@@ -464,10 +481,10 @@ async function buscarEnAntioquia() {
   try {
     // Construir parámetros para el servidor
     const params = new URLSearchParams();
-    // Si hay texto buscado, enviarlo; si no, enviar "Antioquia" para traer todo
-    params.append('q', q ? q + ' Antioquia' : 'Antioquia');
-    if (desde)    params.append('desde',    desde);
-    if (hasta)    params.append('hasta',    hasta);
+    params.append('q',    q || '');
+    params.append('modo', 'antioquia'); // Filtrar solo noticias de Antioquia
+    if (desde)     params.append('desde',     desde);
+    if (hasta)     params.append('hasta',     hasta);
     if (subregion) params.append('subregion', subregion);
     if (municipio) params.append('municipio', municipio);
 
