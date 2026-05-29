@@ -1,4 +1,4 @@
-// ================= SECCIÓN: DEPENDENCIAS =================
+ // ================= SECCIÓN: DEPENDENCIAS =================
 const NoticiaModel = require('../../models/NoticiaModel');
 const { buscarLibre, recolectarAntioquia } = require('../../services/recolector');
 
@@ -442,7 +442,5 @@ module.exports = {
   verificarAdminToken,
   adminCambiarCategoria,
   adminEliminarNoticia,
-  adminVerCambios
-};
   adminVerCambios
 };
