@@ -444,3 +444,5 @@ module.exports = {
   adminEliminarNoticia,
   adminVerCambios
 };
+  adminVerCambios
+};
