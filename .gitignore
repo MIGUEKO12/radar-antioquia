@@ -1,0 +1,9 @@
+﻿# ===== SECCIÓN: DEPENDENCIAS =====
+node_modules/
+
+# ===== SECCIÓN: SECRETOS (SEGURIDAD CRÍTICA) =====
+.env
+nohup.out
+
+# ===== SECCIÓN: DATOS =====
+data/
