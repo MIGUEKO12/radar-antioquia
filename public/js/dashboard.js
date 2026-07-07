@@ -791,16 +791,22 @@ document.addEventListener('click', e => { if (e.target === $('modal-sin-ubicar')
 // ================= SECCIÓN: MODO LIBRE =================
 function setModo(modo) {
   Estado.modo = modo;
+
+  // Toggle DEFENSIVO: si el elemento fue eliminado del HTML en algún rediseño,
+  // simplemente se omite en vez de lanzar TypeError y matar la función entera.
+  // (Lección aprendida: una referencia huérfana a #seccion-graficos dejó MUDO
+  //  el modo libre — este patrón inmuniza setModo contra futuras cirugías de HTML.)
+  const toggle = (id, oculto) => { const el = $(id); if (el) el.classList.toggle('oculto', oculto); };
+
   $('btn-antioquia').classList.toggle('activo', modo==='antioquia');
   $('btn-libre').classList.toggle('activo', modo==='libre');
   const esAntioquia = modo === 'antioquia';
-  $('seccion-mapa').classList.toggle('oculto',       !esAntioquia);
-  $('seccion-graficos').classList.toggle('oculto',   !esAntioquia);
-  $('metricas-section').classList.toggle('oculto',   !esAntioquia);
-  $('buscador-antioquia').classList.toggle('oculto', !esAntioquia);
-  $('filtros-geo').classList.toggle('oculto',        !esAntioquia);
-  $('buscador-libre').classList.toggle('oculto',      esAntioquia);
-  $('seccion-libre').classList.toggle('oculto',       esAntioquia);
+  toggle('main-antioquia',     !esAntioquia);   // TODO el tablero Antioquia (noticias+mapa+tendencia)
+  toggle('metricas-section',   !esAntioquia);   // Tarjetas de métricas superiores
+  toggle('buscador-antioquia', !esAntioquia);   // Buscador del modo Antioquia
+  toggle('filtros-geo',        !esAntioquia);   // Selects de subregión/municipio
+  toggle('buscador-libre',      esAntioquia);   // Buscador del modo libre
+  toggle('seccion-libre',       esAntioquia);   // Resultados del modo libre
   if (esAntioquia) {
     cargarDashboard();
   } else {
